@@ -249,14 +249,22 @@ export function resolveSpokenPick<T extends MatchablePlayer>(
     return { status: "none", cleaned: phrase, heardTeam: club?.abbr ?? null, candidates: [] };
   }
 
-  const clubConfirmed =
-    club !== null &&
-    club.abbr === top.player.nfl_team.toUpperCase() &&
-    club.matched.length >= 2;
+  // Auto-pick when the call contains at least 2 of the 3 identifiers:
+  // player name, team nickname, and team city.
+  const nameFound = top.confidence >= AUTO_FLOOR ? 1 : 0;
+  let cityFound = 0;
+  let nicknameFound = 0;
+  if (club && club.abbr === top.player.nfl_team.toUpperCase()) {
+    const parts = NFL_TEAMS[club.abbr]!.name.toLowerCase().split(" ");
+    const nickname = parts[parts.length - 1] ?? "";
+    const city = parts.slice(0, -1).join(" ");
+    cityFound = city && club.matched.includes(city) ? 1 : 0;
+    nicknameFound = nickname && club.matched.includes(nickname) ? 1 : 0;
+  }
+  const identifiers = nameFound + cityFound + nicknameFound;
   const clear = !runnerUp || top.confidence - runnerUp.confidence >= 0.12;
 
-  const status =
-    clubConfirmed && clear && top.confidence >= AUTO_FLOOR ? "auto" : "confirm";
+  const status = identifiers >= 2 && clear ? "auto" : "confirm";
 
   return { status, cleaned: phrase, heardTeam: club?.abbr ?? null, candidates };
 }
