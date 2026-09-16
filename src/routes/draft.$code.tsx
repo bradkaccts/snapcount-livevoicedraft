@@ -58,6 +58,7 @@ function DraftBoard() {
   const pick = useServerFn(makePick);
   const undo = useServerFn(undoLastPick);
   const highlight = useServerFn(findPlayerHighlight);
+  const playerMedia = useServerFn(findPlayerMedia);
 
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [paused, setPaused] = useState(false);
