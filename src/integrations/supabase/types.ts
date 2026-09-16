@@ -184,6 +184,38 @@ export type Database = {
           },
         ]
       }
+      player_media: {
+        Row: {
+          action_url: string | null
+          created_at: string
+          headshot_url: string | null
+          player_id: string
+          source: string | null
+        }
+        Insert: {
+          action_url?: string | null
+          created_at?: string
+          headshot_url?: string | null
+          player_id: string
+          source?: string | null
+        }
+        Update: {
+          action_url?: string | null
+          created_at?: string
+          headshot_url?: string | null
+          player_id?: string
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_media_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       players: {
         Row: {
           adp: number | null
