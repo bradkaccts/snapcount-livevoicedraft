@@ -167,8 +167,45 @@
   animation-play-state: paused;
 }
 
+.subtitle-line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35em;
+  border-radius: 0.5rem;
+  background: color-mix(in oklch, var(--background) 85%, transparent);
+  padding: 0.75rem 1rem;
+  text-align: center;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--foreground);
+  text-shadow: 0 1px 2px var(--background);
+  min-height: 3rem;
+  align-items: center;
+}
+
+.subtitle-word {
+  display: inline-block;
+  animation: subtitle-pop 180ms ease-out both;
+}
+
+@keyframes subtitle-pop {
+  from {
+    opacity: 0;
+    transform: translateY(0.35em) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ticker-track {
+    animation: none;
+  }
+  .subtitle-word {
     animation: none;
   }
 }

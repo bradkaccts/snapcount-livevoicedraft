@@ -23,9 +23,40 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
   const [state, setState] = useState<"idle" | "recording" | "thinking">("idle");
   const [level, setLevel] = useState(0);
   const [transcript, setTranscript] = useState("");
+  const [shownWords, setShownWords] = useState(0);
+  const shownRef = useRef(0);
+  const revealDone = useRef<(() => void) | null>(null);
   const [candidates, setCandidates] = useState<Player[]>([]);
   const [pending, setPending] = useState<Player | null>(null);
   const [countdown, setCountdown] = useState(3);
+
+  // Subtitle reveal: show one word every ~120ms until the whole transcript is on screen.
+  useEffect(() => {
+    const total = transcript.trim().split(/\s+/).filter(Boolean).length;
+    if (shownWords >= total) {
+      if (total > 0 && revealDone.current) {
+        revealDone.current();
+        revealDone.current = null;
+      }
+      return;
+    }
+    const t = setTimeout(() => {
+      shownRef.current += 1;
+      setShownWords(shownRef.current);
+    }, 120);
+    return () => clearTimeout(t);
+  }, [transcript, shownWords]);
+
+  const revealAll = useCallback((text: string) => {
+    return new Promise<void>((resolve) => {
+      const total = text.trim().split(/\s+/).filter(Boolean).length;
+      if (total === 0 || shownRef.current >= total) {
+        resolve();
+        return;
+      }
+      revealDone.current = resolve;
+    });
+  }, []);
 
   const byId = useCallback(
     (id: string) => players.find((p) => p.id === id) ?? null,
@@ -41,6 +72,8 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
   const begin = useCallback(async () => {
     clearAuto();
     setTranscript("");
+    shownRef.current = 0;
+    setShownWords(0);
     setCandidates([]);
     try {
       recorder.current = await startRecording({ onLevel: setLevel });
@@ -81,6 +114,10 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
         setState("idle");
         return;
       }
+
+      // Wait until every spoken word is on screen before the board acts on it.
+      setTranscript(heard);
+      await revealAll(heard);
 
       // Silence and near-silence come back as boilerplate ("context:", "thank you").
       const lower = heard.trim().toLowerCase().replace(/[^a-z\s]/g, "").trim();
@@ -216,9 +253,18 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
       )}
 
       {transcript && (
-        <p className="mt-3 rounded-md bg-background px-3 py-2 text-sm text-muted-foreground">
-          “{transcript.trim()}”
-        </p>
+        <div className="subtitle-line mt-3" aria-live="polite">
+          {transcript
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, shownWords)
+            .map((word, i) => (
+              <span key={i} className="subtitle-word">
+                {word}
+              </span>
+            ))}
+        </div>
       )}
 
       {pending && (
