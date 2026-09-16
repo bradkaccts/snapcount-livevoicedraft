@@ -214,7 +214,63 @@
   }
 }
 
+/* Metallic confetti: layered gradients create a bright specular band so
+   each piece reads as polished metal catching the light while it spins. */
+.confetti-piece {
+  border-radius: 1px;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.35);
+  animation: confetti-glint 0.9s ease-in-out infinite alternate;
+}
+
+.confetti-gold {
+  background: linear-gradient(
+    115deg,
+    #7a5b12 0%,
+    #d4af37 28%,
+    #fff8d6 46%,
+    #f5d76e 55%,
+    #d4af37 72%,
+    #8a6a16 100%
+  );
+}
+
+.confetti-silver {
+  background: linear-gradient(
+    115deg,
+    #5c6470 0%,
+    #b8c0cc 28%,
+    #ffffff 46%,
+    #dde3ea 55%,
+    #aab3bf 72%,
+    #4c545e 100%
+  );
+}
+
+.confetti-team {
+  background: linear-gradient(
+    115deg,
+    color-mix(in oklab, var(--celebration) 45%, black) 0%,
+    var(--celebration) 28%,
+    #ffffff 46%,
+    color-mix(in oklab, var(--celebration) 70%, white) 55%,
+    var(--celebration) 72%,
+    color-mix(in oklab, var(--celebration) 50%, black) 100%
+  );
+}
+
+@keyframes confetti-glint {
+  from {
+    filter: brightness(0.9);
+  }
+  to {
+    filter: brightness(1.45);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .confetti-piece {
+    animation: none;
+  }
   .ticker-track {
     animation: none;
   }
