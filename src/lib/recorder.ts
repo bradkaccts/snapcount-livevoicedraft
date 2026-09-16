@@ -55,7 +55,9 @@ export type Recorder = {
   cancel: () => void;
 };
 
-export async function startRecording(): Promise<Recorder> {
+export async function startRecording(options?: {
+  onLevel?: (level: number) => void;
+}): Promise<Recorder> {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: true, noiseSuppression: true },
   });
@@ -68,7 +70,16 @@ export async function startRecording(): Promise<Recorder> {
   const node = ctx.createScriptProcessor(4096, 1, 1);
   const chunks: Float32Array[] = [];
   node.onaudioprocess = (event) => {
-    chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+    const input = event.inputBuffer.getChannelData(0);
+    chunks.push(new Float32Array(input));
+    if (options?.onLevel) {
+      let peak = 0;
+      for (let i = 0; i < input.length; i += 16) {
+        const v = Math.abs(input[i] ?? 0);
+        if (v > peak) peak = v;
+      }
+      options.onLevel(Math.min(1, peak * 2.5));
+    }
   };
   source.connect(node);
   node.connect(ctx.destination);
