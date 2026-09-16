@@ -4,6 +4,9 @@ export type TeamPalette = {
   secondary: string;
 };
 
+/** City + nickname for each club, used to match photo captions. */
+export const TEAM_WORDS: Record<string, { city: string; nickname: string }> = Object.create(null);
+
 /** Primary/secondary colors for every NFL club, keyed by abbreviation. */
 export const NFL_TEAMS: Record<string, TeamPalette> = {
   ARI: { name: "Arizona Cardinals", primary: "#97233F", secondary: "#FFB612" },
