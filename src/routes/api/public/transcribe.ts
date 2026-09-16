@@ -26,10 +26,24 @@ export const Route = createFileRoute("/api/public/transcribe")({
           return new Response("That recording is too long", { status: 413 });
         }
 
+        const hintsField = form.get("hints");
+        const hints = typeof hintsField === "string" ? hintsField.trim().slice(0, 900) : "";
+
         const upstream = new FormData();
-        upstream.append("model", "google/gemini-3.5-transcribe");
+        // A vocabulary hint (the remaining player pool) only helps on the OpenAI
+        // transcription models, which accept a `prompt`; otherwise use Gemini.
+        upstream.append(
+          "model",
+          hints ? "openai/gpt-4o-transcribe" : "google/gemini-3.5-transcribe",
+        );
         upstream.append("file", audio, "recording.wav");
         upstream.append("stream", "true");
+        if (hints) {
+          upstream.append(
+            "prompt",
+            `Fantasy football draft call. Expect NFL player and team names such as: ${hints}.`,
+          );
+        }
 
         const response = await fetch(
           "https://ai.gateway.lovable.dev/v1/audio/transcriptions",
