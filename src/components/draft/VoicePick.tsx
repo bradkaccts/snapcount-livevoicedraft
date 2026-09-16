@@ -66,9 +66,9 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
         return;
       }
 
-      const hints = players.slice(0, 60).map((p) => p.name);
+      const hintNames = players.slice(0, 40).map((p) => p.name);
       let heard = "";
-      for await (const event of streamTranscription(blob, hints)) {
+      for await (const event of streamTranscription(blob, hintNames)) {
         if (event.delta) {
           heard += event.delta;
           setTranscript(heard);
@@ -82,6 +82,17 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
         setState("idle");
         return;
       }
+
+      // Guard against the model parroting the vocabulary hint back on a quiet clip.
+      const lower = heard.toLowerCase();
+      const echoed = hintNames.filter((n) => lower.includes(n.toLowerCase())).length;
+      if (echoed >= 3) {
+        setTranscript("");
+        toast.error("Didn't catch that — speak a little louder and hold the button while talking.");
+        setState("idle");
+        return;
+      }
+
 
       const result: ResolvedVoicePick = await resolveVoicePick({
         data: { draftId, transcript: heard.trim().slice(0, 500) },
