@@ -151,11 +151,19 @@ export function useDraftRoom(code: string) {
     void queryClient.invalidateQueries({ queryKey: ["draft", code] });
   };
 
+  const mergedPlayers = (() => {
+    const pool = playersQuery.data ?? [];
+    const extras = (pickedPlayersQuery.data ?? []).filter(
+      (p) => !pool.some((x) => x.id === p.id),
+    );
+    return extras.length ? [...pool, ...extras] : pool;
+  })();
+
   return {
     draft: draftQuery.data ?? null,
     teams: teamsQuery.data ?? [],
     picks: picksQuery.data ?? [],
-    players: playersQuery.data ?? [],
+    players: mergedPlayers,
     isLoading: draftQuery.isLoading || playersQuery.isLoading,
     notFound: draftQuery.isFetched && !draftQuery.data,
     refresh,
