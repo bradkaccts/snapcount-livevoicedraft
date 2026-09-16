@@ -22,6 +22,8 @@ import { PlayerList } from "@/components/draft/PlayerList";
 import { VoicePick } from "@/components/draft/VoicePick";
 import { makePick, undoLastPick } from "@/lib/draft.functions";
 import { findPlayerHighlight, type HighlightResult } from "@/lib/highlights.functions";
+import { findPlayerMedia, type PlayerMedia } from "@/lib/player-media.functions";
+import { lighten, readableOn, teamPalette } from "@/lib/nfl-teams";
 import {
   POSITION_CLASS,
   formatClock,
