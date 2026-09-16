@@ -351,26 +351,51 @@ function DraftBoard() {
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <section className="min-h-0 flex-1 overflow-auto scrollbar-thin p-4">
-          {nextUp && !complete && (
-            <p className="mb-3 text-sm text-muted-foreground">
-              Next up: <span className="font-semibold text-foreground">{nextUp.name}</span>
-            </p>
-          )}
+        <section className="board-scroll relative min-h-0 flex-1 overflow-auto scrollbar-thin p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            {nextUp && !complete ? (
+              <p className="min-w-0 truncate text-sm text-muted-foreground">
+                Next up: <span className="font-semibold text-foreground">{nextUp.name}</span>
+              </p>
+            ) : (
+              <span />
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              className="shrink-0"
+              onClick={toggleDensity}
+              aria-pressed={compact}
+            >
+              {compact ? "Comfortable" : "Compact"}
+            </Button>
+          </div>
           <div
             className="grid gap-2"
-            style={{ gridTemplateColumns: `repeat(${teams.length}, minmax(140px, 1fr))` }}
+            style={{
+              gridTemplateColumns: `repeat(${teams.length}, minmax(${
+                teams.length <= 10 ? 140 : teams.length <= 12 ? 124 : teams.length <= 14 ? 112 : 104
+              }px, 1fr))`,
+            }}
           >
             {teams.map((team) => (
               <div key={team.id} className="min-w-0">
                 <div
-                  className="sticky top-0 z-10 rounded-t-md border-b-4 bg-surface px-2 py-2"
+                  className={`sticky top-0 z-10 rounded-t-md border-b-4 bg-surface px-2 ${compact ? "py-1" : "py-2"}`}
                   style={{ borderColor: team.color }}
                 >
-                  <p className="truncate font-display text-lg leading-tight">{team.name}</p>
-                  <p className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">
-                    {team.manager || `Slot ${team.slot}`}
+                  <p
+                    className={`truncate font-display leading-tight ${
+                      compact || teams.length > 12 ? "text-base" : "text-lg"
+                    }`}
+                  >
+                    {team.name}
                   </p>
+                  {!compact && (
+                    <p className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {team.manager || `Slot ${team.slot}`}
+                    </p>
+                  )}
                 </div>
                 <ul className="mt-1 space-y-1">
                   {Array.from({ length: draft.rounds }, (_, r) => {
