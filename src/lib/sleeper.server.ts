@@ -48,13 +48,14 @@ async function* streamObjectValues(body: ReadableStream<Uint8Array>) {
   let inString = false;
   let escaped = false;
   let done = false;
+  let scanFrom = 0;
 
   while (!done) {
     const chunk = await reader.read();
     done = chunk.done;
     if (chunk.value) buffer += decoder.decode(chunk.value, { stream: true });
 
-    for (let i = 0; i < buffer.length; i++) {
+    for (let i = scanFrom; i < buffer.length; i++) {
       const ch = buffer[i]!;
       if (inString) {
         if (escaped) escaped = false;
