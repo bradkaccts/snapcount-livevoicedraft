@@ -30,7 +30,11 @@ export const resolveVoicePick = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const [{ data: players }, { data: picks }] = await Promise.all([
-      supabaseAdmin.from("players").select("id, name, position, nfl_team, rank").limit(2000),
+      supabaseAdmin
+        .from("players")
+        .select("id, name, position, nfl_team, rank")
+        .eq("active", true)
+        .limit(2000),
       supabaseAdmin.from("picks").select("player_id").eq("draft_id", data.draftId),
     ]);
 

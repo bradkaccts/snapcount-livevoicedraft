@@ -1,8 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
-import { Dice5, Mic, Sparkles, Trophy, Plus, Trash2, Loader2 } from "lucide-react";
+import {
+  Dice5,
+  Mic,
+  Sparkles,
+  Trophy,
+  Plus,
+  Trash2,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createDraft } from "@/lib/draft.functions";
+import { syncPlayers } from "@/lib/players.functions";
 import { shuffle } from "@/lib/draft-utils";
 
 export const Route = createFileRoute("/")({
@@ -67,6 +78,17 @@ function defaultTeams(count: number): TeamDraftEntry[] {
   }));
 }
 
+function relativeTime(iso: string | null): string {
+  if (!iso) return "just now";
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutes < 2) return "just now";
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
 function SetupPage() {
   const navigate = useNavigate();
   const create = useServerFn(createDraft);
@@ -78,6 +100,34 @@ function SetupPage() {
   const [shuffling, setShuffling] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [joinCode, setJoinCode] = useState("");
+
+  const queryClient = useQueryClient();
+  const sync = useServerFn(syncPlayers);
+  const [refreshing, setRefreshing] = useState(false);
+  const poolQuery = useQuery({
+    queryKey: ["player-pool"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => sync({ data: { force: false } }),
+  });
+  const pool = poolQuery.data ?? null;
+
+  const refreshPool = async () => {
+    setRefreshing(true);
+    try {
+      const status = await sync({ data: { force: true } });
+      queryClient.setQueryData(["player-pool"], status);
+      void queryClient.invalidateQueries({ queryKey: ["players"] });
+      toast.success(
+        status.source === "sleeper"
+          ? `Player list updated — ${status.playerCount} players`
+          : "Couldn't reach the live player feed, using the built-in list",
+      );
+    } catch {
+      toast.error("Couldn't refresh the player list");
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const updateTeam = (index: number, patch: Partial<TeamDraftEntry>) => {
     setTeams((prev) => prev.map((t, i) => (i === index ? { ...t, ...patch } : t)));
@@ -238,6 +288,36 @@ function SetupPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2.5 text-sm">
+                <p className="text-muted-foreground">
+                  {poolQuery.isLoading || refreshing ? (
+                    "Loading the latest player list…"
+                  ) : pool?.source === "sleeper" ? (
+                    <>
+                      Player list:{" "}
+                      <span className="text-foreground">
+                        {pool.playerCount.toLocaleString()} players
+                      </span>
+                      , updated {relativeTime(pool.lastSyncedAt)}
+                    </>
+                  ) : (
+                    "Using the built-in player list — couldn't reach the live player feed."
+                  )}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 text-muted-foreground"
+                  onClick={refreshPool}
+                  disabled={refreshing || poolQuery.isLoading}
+                >
+                  <RefreshCw
+                    className={refreshing ? "mr-1.5 h-3.5 w-3.5 animate-spin" : "mr-1.5 h-3.5 w-3.5"}
+                  />
+                  Refresh
+                </Button>
               </div>
 
               <Button

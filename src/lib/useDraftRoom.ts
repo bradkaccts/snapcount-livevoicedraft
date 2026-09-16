@@ -96,8 +96,27 @@ export function useDraftRoom(code: string) {
       const { data, error } = await supabase
         .from("players")
         .select("id, name, position, nfl_team, bye_week, rank, stat_line")
+        .eq("active", true)
         .order("rank")
-        .limit(1000);
+        .limit(1500);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Player[];
+    },
+  });
+
+  const pickedIds = (picksQuery.data ?? []).map((p) => p.player_id).sort();
+
+  // Players drafted in this room that are no longer in the active pool
+  // (e.g. dropped from the live feed) still need to render on the board.
+  const pickedPlayersQuery = useQuery({
+    queryKey: ["picked-players", pickedIds],
+    enabled: pickedIds.length > 0,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("players")
+        .select("id, name, position, nfl_team, bye_week, rank, stat_line")
+        .in("id", pickedIds);
       if (error) throw new Error(error.message);
       return (data ?? []) as Player[];
     },
@@ -132,11 +151,19 @@ export function useDraftRoom(code: string) {
     void queryClient.invalidateQueries({ queryKey: ["draft", code] });
   };
 
+  const mergedPlayers = (() => {
+    const pool = playersQuery.data ?? [];
+    const extras = (pickedPlayersQuery.data ?? []).filter(
+      (p) => !pool.some((x) => x.id === p.id),
+    );
+    return extras.length ? [...pool, ...extras] : pool;
+  })();
+
   return {
     draft: draftQuery.data ?? null,
     teams: teamsQuery.data ?? [],
     picks: picksQuery.data ?? [],
-    players: playersQuery.data ?? [],
+    players: mergedPlayers,
     isLoading: draftQuery.isLoading || playersQuery.isLoading,
     notFound: draftQuery.isFetched && !draftQuery.data,
     refresh,
