@@ -66,9 +66,8 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
         return;
       }
 
-      const hintNames = players.slice(0, 40).map((p) => p.name);
       let heard = "";
-      for await (const event of streamTranscription(blob, hintNames)) {
+      for await (const event of streamTranscription(blob, [])) {
         if (event.delta) {
           heard += event.delta;
           setTranscript(heard);
