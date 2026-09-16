@@ -98,6 +98,14 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
         setState("idle");
         return;
       }
+      if (active.peak() < 0.01) {
+        toast.error(
+          "The board can't hear you — check that your mic isn't muted and the right microphone is selected in your browser, then try again.",
+          { duration: 6000 },
+        );
+        setState("idle");
+        return;
+      }
 
       let heard = "";
       for await (const event of streamTranscription(blob, [])) {

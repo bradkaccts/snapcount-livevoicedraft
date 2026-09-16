@@ -53,6 +53,8 @@ function encodeWav(chunks: Float32Array[], inputRate: number): Blob {
 export type Recorder = {
   stop: () => Promise<Blob>;
   cancel: () => void;
+  /** Loudest sample captured so far (0–1). Near-zero means the mic is silent. */
+  peak: () => number;
 };
 
 export async function startRecording(options?: {
@@ -66,20 +68,25 @@ export async function startRecording(options?: {
     (window as unknown as { webkitAudioContext: typeof AudioContext })
       .webkitAudioContext;
   const ctx = new AudioCtor();
+  // Some browsers start the context suspended when it is created after an
+  // awaited getUserMedia (outside the raw click) — resume or no samples flow.
+  if (ctx.state === "suspended") {
+    await ctx.resume().catch(() => {});
+  }
   const source = ctx.createMediaStreamSource(stream);
   const node = ctx.createScriptProcessor(4096, 1, 1);
   const chunks: Float32Array[] = [];
+  let peakAll = 0;
   node.onaudioprocess = (event) => {
     const input = event.inputBuffer.getChannelData(0);
     chunks.push(new Float32Array(input));
-    if (options?.onLevel) {
-      let peak = 0;
-      for (let i = 0; i < input.length; i += 16) {
-        const v = Math.abs(input[i] ?? 0);
-        if (v > peak) peak = v;
-      }
-      options.onLevel(Math.min(1, peak * 2.5));
+    let peak = 0;
+    for (let i = 0; i < input.length; i += 16) {
+      const v = Math.abs(input[i] ?? 0);
+      if (v > peak) peak = v;
     }
+    if (peak > peakAll) peakAll = peak;
+    options?.onLevel?.(Math.min(1, peak * 2.5));
   };
   source.connect(node);
   node.connect(ctx.destination);
@@ -101,6 +108,7 @@ export async function startRecording(options?: {
       teardown();
       void ctx.close();
     },
+    peak: () => peakAll,
   };
 }
 
