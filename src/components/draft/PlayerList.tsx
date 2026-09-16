@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useMotionValue, useTransform } from "motion/react";
-import { Search, Star, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,40 +11,30 @@ const PAGE = 40;
 
 type Props = {
   players: Player[];
-  watchlist: string[];
-  onToggleWatch: (playerId: string) => void;
   onDraft: (player: Player) => void;
   disabled?: boolean | undefined;
 };
 
-export function PlayerList({
-  players,
-  watchlist,
-  onToggleWatch,
-  onDraft,
-  disabled,
-}: Props) {
+export function PlayerList({ players, onDraft, disabled }: Props) {
   const [query, setQuery] = useState("");
   const [position, setPosition] = useState<string | null>(null);
-  const [onlyWatched, setOnlyWatched] = useState(false);
   const [visible, setVisible] = useState(PAGE);
   const sentinel = useRef<HTMLDivElement | null>(null);
 
   const filtered = useMemo(() => {
     let list = players;
     if (position) list = list.filter((p) => p.position === position);
-    if (onlyWatched) list = list.filter((p) => watchlist.includes(p.id));
     if (query.trim()) {
       return matchPlayers(query, list, 60)
         .filter((c) => c.score > 0.35)
         .map((c) => c.player);
     }
     return list;
-  }, [players, position, onlyWatched, watchlist, query]);
+  }, [players, position, query]);
 
   useEffect(() => {
     setVisible(PAGE);
-  }, [query, position, onlyWatched]);
+  }, [query, position]);
 
   useEffect(() => {
     const node = sentinel.current;
@@ -79,7 +69,7 @@ export function PlayerList({
           )}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          <FilterChip active={!position && !onlyWatched} onClick={() => { setPosition(null); setOnlyWatched(false); }}>
+          <FilterChip active={!position} onClick={() => setPosition(null)}>
             All
           </FilterChip>
           {POSITIONS.map((p) => (
@@ -91,9 +81,6 @@ export function PlayerList({
               {p}
             </FilterChip>
           ))}
-          <FilterChip active={onlyWatched} onClick={() => setOnlyWatched((v) => !v)}>
-            <Star className="mr-1 h-3 w-3" /> {watchlist.length}
-          </FilterChip>
         </div>
       </div>
 
@@ -108,8 +95,6 @@ export function PlayerList({
               <PlayerRow
                 key={player.id}
                 player={player}
-                watched={watchlist.includes(player.id)}
-                onToggleWatch={() => onToggleWatch(player.id)}
                 onDraft={() => onDraft(player)}
                 disabled={disabled}
               />
@@ -148,20 +133,15 @@ function FilterChip({
 
 function PlayerRow({
   player,
-  watched,
-  onToggleWatch,
   onDraft,
   disabled,
 }: {
   player: Player;
-  watched: boolean;
-  onToggleWatch: () => void;
   onDraft: () => void;
   disabled?: boolean | undefined;
 }) {
   const x = useMotionValue(0);
   const draftOpacity = useTransform(x, [20, 110], [0, 1]);
-  const watchOpacity = useTransform(x, [-110, -20], [1, 0]);
 
   return (
     <li className="relative overflow-hidden">
@@ -172,19 +152,12 @@ function PlayerRow({
         Draft
       </motion.div>
       <motion.div
-        style={{ opacity: watchOpacity }}
-        className="pointer-events-none absolute inset-y-0 right-0 flex items-center bg-clock/15 px-4 text-sm font-bold uppercase text-clock"
-      >
-        Watch
-      </motion.div>
-      <motion.div
         drag="x"
         style={{ x }}
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.35}
         onDragEnd={(_, info) => {
           if (info.offset.x > 110 && !disabled) onDraft();
-          else if (info.offset.x < -110) onToggleWatch();
         }}
         className="relative flex touch-pan-y items-center gap-3 bg-surface px-4 py-2.5"
       >
@@ -202,21 +175,7 @@ function PlayerRow({
             {player.stat_line ? ` · ${player.stat_line}` : ""}
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`h-8 w-8 shrink-0 ${watched ? "text-clock" : "text-muted-foreground"}`}
-          onClick={onToggleWatch}
-          aria-label={watched ? `Unwatch ${player.name}` : `Watch ${player.name}`}
-        >
-          <Star className={`h-4 w-4 ${watched ? "fill-current" : ""}`} />
-        </Button>
-        <Button
-          size="sm"
-          className="shrink-0"
-          onClick={onDraft}
-          disabled={disabled}
-        >
+        <Button size="sm" className="shrink-0" onClick={onDraft} disabled={disabled}>
           Draft
         </Button>
       </motion.div>

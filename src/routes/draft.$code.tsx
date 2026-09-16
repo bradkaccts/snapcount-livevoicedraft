@@ -60,7 +60,7 @@ function DraftBoard() {
   const highlight = useServerFn(findPlayerHighlight);
   const playerMedia = useServerFn(findPlayerMedia);
 
-  const [watchlist, setWatchlist] = useState<string[]>([]);
+  
   const [paused, setPaused] = useState(false);
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -178,7 +178,7 @@ function DraftBoard() {
       try {
         await pick({ data: { draftId: draft.id, playerId: player.id } });
         refresh();
-        setWatchlist((w) => w.filter((id) => id !== player.id));
+        
         const selection = slotForOverall(
           draft.current_overall,
           draft.team_count,
@@ -410,10 +410,6 @@ function DraftBoard() {
           <div className="min-h-0 flex-1">
             <PlayerList
               players={available}
-              watchlist={watchlist}
-              onToggleWatch={(id) =>
-                setWatchlist((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]))
-              }
               onDraft={submitPick}
               disabled={busy || complete}
             />
