@@ -10,7 +10,7 @@ export type PlayerMedia = {
 };
 
 /** Bump when the scoring rules change so cached picks get re-evaluated. */
-const SELECTOR_VERSION = 2;
+const SELECTOR_VERSION = 3;
 
 /** Minimum score for a photo to be shown at all. */
 const MIN_SCORE = 2;
