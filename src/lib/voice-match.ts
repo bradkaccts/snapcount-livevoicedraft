@@ -219,6 +219,26 @@ export function resolveSpokenPick<T extends MatchablePlayer>(
 ): VoiceResolution<T> {
   const club = extractClub(transcript);
   const phrase = extractNamePhrase(transcript, club);
+
+  // Defenses are drafted by club: "Houston Texans defense" names the DST row,
+  // not a person. City + nickname + "defense" is a confident auto-pick.
+  const defenseSaid = /\b(defense|defence|dst)\b/.test(words(transcript).join(" "));
+  if (defenseSaid && club) {
+    const dst = pool.find(
+      (p) =>
+        (p.position.toUpperCase() === "DST" || p.position.toUpperCase() === "DEF") &&
+        p.nfl_team.toUpperCase() === club!.abbr,
+    );
+    if (dst) {
+      return {
+        status: "auto",
+        cleaned: dst.name,
+        heardTeam: club.abbr,
+        candidates: [{ player: dst, confidence: 1 }],
+      };
+    }
+  }
+
   if (!phrase) {
     return {
       status: "none",
