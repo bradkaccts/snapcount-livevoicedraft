@@ -253,9 +253,18 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
       )}
 
       {transcript && (
-        <p className="mt-3 rounded-md bg-background px-3 py-2 text-sm text-muted-foreground">
-          “{transcript.trim()}”
-        </p>
+        <div className="subtitle-line mt-3" aria-live="polite">
+          {transcript
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, shownWords)
+            .map((word, i) => (
+              <span key={i} className="subtitle-word">
+                {word}
+              </span>
+            ))}
+        </div>
       )}
 
       {pending && (
