@@ -55,7 +55,9 @@ export type Recorder = {
   cancel: () => void;
 };
 
-export async function startRecording(): Promise<Recorder> {
+export async function startRecording(options?: {
+  onLevel?: (level: number) => void;
+}): Promise<Recorder> {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: true, noiseSuppression: true },
   });
@@ -68,7 +70,16 @@ export async function startRecording(): Promise<Recorder> {
   const node = ctx.createScriptProcessor(4096, 1, 1);
   const chunks: Float32Array[] = [];
   node.onaudioprocess = (event) => {
-    chunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+    const input = event.inputBuffer.getChannelData(0);
+    chunks.push(new Float32Array(input));
+    if (options?.onLevel) {
+      let peak = 0;
+      for (let i = 0; i < input.length; i += 16) {
+        const v = Math.abs(input[i] ?? 0);
+        if (v > peak) peak = v;
+      }
+      options.onLevel(Math.min(1, peak * 2.5));
+    }
   };
   source.connect(node);
   node.connect(ctx.destination);
@@ -96,9 +107,13 @@ export async function startRecording(): Promise<Recorder> {
 /** Uploads a recording and yields transcript fragments as they arrive. */
 export async function* streamTranscription(
   blob: Blob,
+  hints?: string[],
 ): AsyncGenerator<{ delta?: string; text?: string }> {
   const form = new FormData();
   form.append("audio", blob, "recording.wav");
+  if (hints && hints.length > 0) {
+    form.append("hints", hints.join(", ").slice(0, 900));
+  }
   const res = await fetch("/api/public/transcribe", { method: "POST", body: form });
   if (!res.ok || !res.body) {
     throw new Error((await res.text().catch(() => "")) || "Could not hear that");

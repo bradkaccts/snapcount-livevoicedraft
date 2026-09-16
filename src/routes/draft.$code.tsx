@@ -419,7 +419,12 @@ function DraftBoard() {
             />
           </div>
           {!complete && (
-            <VoicePick players={available} onConfirm={submitPick} disabled={busy} />
+            <VoicePick
+              draftId={draft.id}
+              players={available}
+              onConfirm={submitPick}
+              disabled={busy}
+            />
           )}
         </aside>
       </div>
