@@ -86,13 +86,15 @@ async function* streamObjectValues(body: ReadableStream<Uint8Array>) {
       }
     }
 
-    // keep only the part of the buffer belonging to an unfinished entry
+    // keep only the part of the buffer belonging to an unfinished entry,
+    // and never rescan characters that were already consumed
     if (start >= 0) {
       buffer = buffer.slice(start);
       start = 0;
     } else {
       buffer = "";
     }
+    scanFrom = buffer.length;
   }
 }
 
