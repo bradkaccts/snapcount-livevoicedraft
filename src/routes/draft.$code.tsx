@@ -110,18 +110,19 @@ function DraftBoard() {
         ) ?? null
       : null;
 
-  // The clock holds at its last value while the celebration is on screen,
-  // then resets to the full clock and starts counting the moment it closes.
+  // The clock holds at its last value while the celebration or the
+  // "Now on the Clock" announcement is on screen, then resets to the full
+  // clock and starts counting the moment the announcement closes.
   useEffect(() => {
-    if (!draft || spotlight) return;
+    if (!draft || spotlight || clockAnnounce) return;
     setRemaining(draft.clock_seconds);
-  }, [draft?.current_overall, draft?.clock_seconds, draft, spotlight]);
+  }, [draft?.current_overall, draft?.clock_seconds, draft, spotlight, clockAnnounce]);
 
   useEffect(() => {
-    if (paused || complete || spotlight || !draft) return;
+    if (paused || complete || spotlight || clockAnnounce || !draft) return;
     const id = setInterval(() => setRemaining((r) => (r > 0 ? r - 1 : 0)), 1000);
     return () => clearInterval(id);
-  }, [paused, complete, draft, draft?.current_overall, spotlight]);
+  }, [paused, complete, draft, draft?.current_overall, spotlight, clockAnnounce]);
 
   // Let the celebration play out (~4s), hold for 3s, then return to the board.
   const spotlightKey = spotlight ? `${spotlight.overall}-${spotlight.player.id}` : null;
@@ -130,6 +131,38 @@ function DraftBoard() {
     const timer = setTimeout(() => setSpotlight(null), 7000);
     return () => clearTimeout(timer);
   }, [spotlightKey]);
+
+  // The moment the celebration closes, hand the mic to the next drafter:
+  // an automatic "Now on the Clock" announcement, then the countdown begins.
+  const celebrationWasOpen = useRef(false);
+  const skipNextAnnounce = useRef(false);
+  useEffect(() => {
+    const wasOpen = celebrationWasOpen.current;
+    celebrationWasOpen.current = Boolean(spotlight);
+    if (!wasOpen || spotlight || complete || !draft) return;
+    if (skipNextAnnounce.current) {
+      skipNextAnnounce.current = false;
+      return;
+    }
+    if (!onTheClock || !current) return;
+    setClockAnnounce({
+      teamId: onTheClock.id,
+      teamName: onTheClock.name,
+      manager: onTheClock.manager,
+      color: onTheClock.color,
+      round: current.round,
+      pickInRound: current.pickInRound,
+      overall: draft.current_overall,
+    });
+  }, [spotlight, draft, complete, onTheClock, current]);
+
+  // The announcement runs its entrance (~1.2s), holds, then clears itself.
+  const announceKey = clockAnnounce ? `${clockAnnounce.overall}-${clockAnnounce.teamId}` : null;
+  useEffect(() => {
+    if (!announceKey) return;
+    const timer = setTimeout(() => setClockAnnounce(null), 4500);
+    return () => clearTimeout(timer);
+  }, [announceKey]);
 
   const submitPick = useCallback(
     async (player: Player) => {
