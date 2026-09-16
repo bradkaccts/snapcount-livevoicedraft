@@ -238,6 +238,9 @@ function DraftBoard() {
           <Button variant="secondary" size="icon" onClick={exportCsv} aria-label="Export results">
             <Download className="h-4 w-4" />
           </Button>
+          <Button asChild variant="secondary">
+            <Link to="/recap/$code" params={{ code }}>Recap</Link>
+          </Button>
         </div>
       </header>
 
