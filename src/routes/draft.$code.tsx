@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeft,
@@ -11,6 +11,7 @@ import {
   Play,
   RotateCcw,
   Sparkles,
+  Timer,
   Trophy,
   X,
 } from "lucide-react";
@@ -68,6 +69,17 @@ function DraftBoard() {
       overall: number;
       round: number;
       pickInRound: number;
+    } | null
+  >(null);
+  const [clockAnnounce, setClockAnnounce] = useState<
+    {
+      teamId: string;
+      teamName: string;
+      manager: string | null;
+      color: string;
+      round: number;
+      pickInRound: number;
+      overall: number;
     } | null
   >(null);
 
