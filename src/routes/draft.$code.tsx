@@ -87,6 +87,8 @@ function DraftBoard() {
     } | null
   >(null);
 
+  const spotlightPalette = teamPalette(spotlight?.player.nfl_team);
+
   const playersById = useMemo(
     () => new Map(players.map((p) => [p.id, p])),
     [players],
