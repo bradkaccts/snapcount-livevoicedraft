@@ -440,7 +440,7 @@ function DraftBoard() {
                 "--celebration": spotlightPalette.primary,
                 "--celebration-foreground": readableOn(spotlightPalette.primary),
                 "--celebration-soft": lighten(spotlightPalette.primary, 0.35),
-              } as React.CSSProperties
+              } as Record<string, string>
             }
           >
             {spotlight.media?.actionUrl && (
