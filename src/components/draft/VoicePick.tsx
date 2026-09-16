@@ -72,6 +72,7 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
   const begin = useCallback(async () => {
     clearAuto();
     setTranscript("");
+    shownRef.current = 0;
     setShownWords(0);
     setCandidates([]);
     try {
@@ -113,6 +114,10 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
         setState("idle");
         return;
       }
+
+      // Wait until every spoken word is on screen before the board acts on it.
+      setTranscript(heard);
+      await revealAll(heard);
 
       // Silence and near-silence come back as boilerplate ("context:", "thank you").
       const lower = heard.trim().toLowerCase().replace(/[^a-z\s]/g, "").trim();
