@@ -225,39 +225,78 @@ export type Database = {
           },
         ]
       }
+      player_sync: {
+        Row: {
+          created_at: string
+          id: string
+          last_error: string | null
+          last_synced_at: string | null
+          player_count: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          player_count?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          player_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       players: {
         Row: {
+          active: boolean
           adp: number | null
           bye_week: number | null
           created_at: string
+          external_id: string | null
           id: string
           name: string
           nfl_team: string
           position: string
           rank: number
+          source: string
           stat_line: string | null
+          updated_at: string
         }
         Insert: {
+          active?: boolean
           adp?: number | null
           bye_week?: number | null
           created_at?: string
+          external_id?: string | null
           id?: string
           name: string
           nfl_team: string
           position: string
           rank: number
+          source?: string
           stat_line?: string | null
+          updated_at?: string
         }
         Update: {
+          active?: boolean
           adp?: number | null
           bye_week?: number | null
           created_at?: string
+          external_id?: string | null
           id?: string
           name?: string
           nfl_team?: string
           position?: string
           rank?: number
+          source?: string
           stat_line?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
