@@ -29,6 +29,28 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
   const [pending, setPending] = useState<Player | null>(null);
   const [countdown, setCountdown] = useState(3);
 
+  // Subtitle reveal: show one word every ~120ms until the whole transcript is on screen.
+  useEffect(() => {
+    const total = transcript.trim().split(/\s+/).filter(Boolean).length;
+    if (shownWords >= total) {
+      if (total > 0 && revealDone.current) {
+        revealDone.current();
+        revealDone.current = null;
+      }
+      return;
+    }
+    const t = setTimeout(() => setShownWords((n) => n + 1), 120);
+    return () => clearTimeout(t);
+  }, [transcript, shownWords]);
+
+  const revealAll = useCallback((text: string) => {
+    return new Promise<void>((resolve) => {
+      revealDone.current = resolve;
+      setTranscript(text);
+      if (!text.trim()) resolve();
+    });
+  }, []);
+
   const byId = useCallback(
     (id: string) => players.find((p) => p.id === id) ?? null,
     [players],
@@ -43,6 +65,7 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
   const begin = useCallback(async () => {
     clearAuto();
     setTranscript("");
+    setShownWords(0);
     setCandidates([]);
     try {
       recorder.current = await startRecording({ onLevel: setLevel });
