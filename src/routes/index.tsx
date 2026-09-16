@@ -279,6 +279,36 @@ function SetupPage() {
                 </div>
               </div>
 
+              <div className="flex items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-2.5 text-sm">
+                <p className="text-muted-foreground">
+                  {poolQuery.isLoading || refreshing ? (
+                    "Loading the latest player list…"
+                  ) : pool?.source === "sleeper" ? (
+                    <>
+                      Player list:{" "}
+                      <span className="text-foreground">
+                        {pool.playerCount.toLocaleString()} players
+                      </span>
+                      , updated {relativeTime(pool.lastSyncedAt)}
+                    </>
+                  ) : (
+                    "Using the built-in player list — couldn't reach the live player feed."
+                  )}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 text-muted-foreground"
+                  onClick={refreshPool}
+                  disabled={refreshing || poolQuery.isLoading}
+                >
+                  <RefreshCw
+                    className={refreshing ? "mr-1.5 h-3.5 w-3.5 animate-spin" : "mr-1.5 h-3.5 w-3.5"}
+                  />
+                  Refresh
+                </Button>
+              </div>
+
               <Button
                 size="lg"
                 className="w-full text-base"
