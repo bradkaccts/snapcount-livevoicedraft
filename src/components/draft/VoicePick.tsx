@@ -23,6 +23,8 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
   const [state, setState] = useState<"idle" | "recording" | "thinking">("idle");
   const [level, setLevel] = useState(0);
   const [transcript, setTranscript] = useState("");
+  const [shownWords, setShownWords] = useState(0);
+  const revealDone = useRef<(() => void) | null>(null);
   const [candidates, setCandidates] = useState<Player[]>([]);
   const [pending, setPending] = useState<Player | null>(null);
   const [countdown, setCountdown] = useState(3);
