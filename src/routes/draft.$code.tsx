@@ -433,13 +433,45 @@ function DraftBoard() {
             role="dialog"
             aria-modal="true"
             aria-label={`${spotlight.player.name} selected by ${spotlight.teamName}`}
+            style={
+              {
+                "--celebration": spotlightPalette.primary,
+                "--celebration-foreground": readableOn(spotlightPalette.primary),
+                "--celebration-soft": lighten(spotlightPalette.primary, 0.35),
+              } as React.CSSProperties
+            }
           >
+            {spotlight.media?.actionUrl && (
+              <motion.img
+                key={spotlight.media.actionUrl}
+                src={spotlight.media.actionUrl}
+                alt={`${spotlight.player.name} in action`}
+                initial={{ opacity: 0, scale: 1.18 }}
+                animate={{ opacity: 0.55, scale: 1 }}
+                transition={{ duration: 6, ease: "easeOut" }}
+                onError={() =>
+                  setSpotlight((prev) =>
+                    prev ? { ...prev, media: { ...prev.media!, actionUrl: null } } : prev,
+                  )
+                }
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+              />
+            )}
+
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background: `radial-gradient(120% 90% at 50% 45%, transparent 5%, ${spotlightPalette.secondary}55 55%, rgba(6,8,12,0.94) 100%)`,
+              }}
+            />
+
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 0.7, 0.2] }}
               transition={{ duration: 1.4, times: [0, 0.25, 1] }}
-              className="pointer-events-none absolute inset-0 bg-celebration"
+              className="pointer-events-none absolute inset-0 bg-celebration mix-blend-overlay"
             />
+
 
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-25">
               <motion.div
