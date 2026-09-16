@@ -90,6 +90,34 @@ function SetupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [joinCode, setJoinCode] = useState("");
 
+  const queryClient = useQueryClient();
+  const sync = useServerFn(syncPlayers);
+  const [refreshing, setRefreshing] = useState(false);
+  const poolQuery = useQuery({
+    queryKey: ["player-pool"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => sync({ data: { force: false } }),
+  });
+  const pool = poolQuery.data ?? null;
+
+  const refreshPool = async () => {
+    setRefreshing(true);
+    try {
+      const status = await sync({ data: { force: true } });
+      queryClient.setQueryData(["player-pool"], status);
+      void queryClient.invalidateQueries({ queryKey: ["players"] });
+      toast.success(
+        status.source === "sleeper"
+          ? `Player list updated — ${status.playerCount} players`
+          : "Couldn't reach the live player feed, using the built-in list",
+      );
+    } catch {
+      toast.error("Couldn't refresh the player list");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const updateTeam = (index: number, patch: Partial<TeamDraftEntry>) => {
     setTeams((prev) => prev.map((t, i) => (i === index ? { ...t, ...patch } : t)));
   };
