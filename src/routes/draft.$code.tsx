@@ -61,6 +61,21 @@ function DraftBoard() {
   const playerMedia = useServerFn(findPlayerMedia);
 
   
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setCompact(window.localStorage.getItem("draft-board-density") === "compact");
+  }, []);
+  const toggleDensity = useCallback(() => {
+    setCompact((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("draft-board-density", next ? "compact" : "comfortable");
+      }
+      return next;
+    });
+  }, []);
+
   const [paused, setPaused] = useState(false);
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -336,26 +351,53 @@ function DraftBoard() {
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <section className="min-h-0 flex-1 overflow-auto scrollbar-thin p-4">
-          {nextUp && !complete && (
-            <p className="mb-3 text-sm text-muted-foreground">
-              Next up: <span className="font-semibold text-foreground">{nextUp.name}</span>
-            </p>
-          )}
+        <section className="board-scroll relative min-h-0 flex-1 overflow-auto scrollbar-thin p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            {nextUp && !complete ? (
+              <p className="min-w-0 truncate text-sm text-muted-foreground">
+                Next up: <span className="font-semibold text-foreground">{nextUp.name}</span>
+              </p>
+            ) : (
+              <span />
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              className="shrink-0"
+              onClick={toggleDensity}
+              aria-pressed={compact}
+            >
+              {compact ? "Comfortable" : "Compact"}
+            </Button>
+          </div>
           <div
             className="grid gap-2"
-            style={{ gridTemplateColumns: `repeat(${teams.length}, minmax(140px, 1fr))` }}
+            style={{
+              gridTemplateColumns: `repeat(${teams.length}, minmax(${
+                (teams.length <= 10 ? 140 : teams.length <= 12 ? 124 : teams.length <= 14 ? 112 : 104) -
+                (compact ? 22 : 0)
+              }px, 1fr))`,
+              gap: compact ? "0.25rem" : undefined,
+            }}
           >
             {teams.map((team) => (
               <div key={team.id} className="min-w-0">
                 <div
-                  className="sticky top-0 z-10 rounded-t-md border-b-4 bg-surface px-2 py-2"
+                  className={`sticky top-0 z-10 rounded-t-md border-b-4 bg-surface px-2 ${compact ? "py-1" : "py-2"}`}
                   style={{ borderColor: team.color }}
                 >
-                  <p className="truncate font-display text-lg leading-tight">{team.name}</p>
-                  <p className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">
-                    {team.manager || `Slot ${team.slot}`}
+                  <p
+                    className={`truncate font-display leading-tight ${
+                      compact || teams.length > 12 ? "text-base" : "text-lg"
+                    }`}
+                  >
+                    {team.name}
                   </p>
+                  {!compact && (
+                    <p className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {team.manager || `Slot ${team.slot}`}
+                    </p>
+                  )}
                 </div>
                 <ul className="mt-1 space-y-1">
                   {Array.from({ length: draft.rounds }, (_, r) => {
@@ -371,7 +413,7 @@ function DraftBoard() {
                     return (
                       <li
                         key={round}
-                        className={`rounded-md px-2 py-1.5 text-sm ${
+                        className={`rounded-md px-2 ${compact ? "py-1 text-xs" : "py-1.5 text-sm"} ${
                           player
                             ? "bg-surface"
                             : isCurrent
@@ -381,16 +423,18 @@ function DraftBoard() {
                       >
                         {player ? (
                           <>
-                            <span className="flex items-center gap-1.5">
-                              <span className={`pos-chip ${POSITION_CLASS[player.position] ?? ""}`}>
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <span className={`pos-chip shrink-0 ${POSITION_CLASS[player.position] ?? ""}`}>
                                 {player.position}
                               </span>
                               <span className="truncate font-semibold">{player.name}</span>
                             </span>
-                            <span className="text-[11px] text-muted-foreground">
-                              {player.nfl_team} · {round}.
-                              {String(entry?.pick_in_round ?? 0).padStart(2, "0")}
-                            </span>
+                            {!compact && (
+                              <span className="text-[11px] text-muted-foreground">
+                                {player.nfl_team} · {round}.
+                                {String(entry?.pick_in_round ?? 0).padStart(2, "0")}
+                              </span>
+                            )}
                           </>
                         ) : (
                           <span className="text-[11px] uppercase tracking-widest text-muted-foreground">

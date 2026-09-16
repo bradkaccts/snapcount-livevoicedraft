@@ -167,6 +167,19 @@
   animation-play-state: paused;
 }
 
+/* Horizontal scroll affordance for the draft board */
+.board-scroll {
+  background-image:
+    linear-gradient(to right, var(--background), transparent),
+    linear-gradient(to left, var(--background), transparent),
+    linear-gradient(to right, color-mix(in oklch, var(--foreground) 22%, transparent), transparent),
+    linear-gradient(to left, color-mix(in oklch, var(--foreground) 22%, transparent), transparent);
+  background-position: 0 0, 100% 0, 0 0, 100% 0;
+  background-repeat: no-repeat;
+  background-size: 28px 100%, 28px 100%, 14px 100%, 14px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
 .subtitle-line {
   display: flex;
   flex-wrap: wrap;
