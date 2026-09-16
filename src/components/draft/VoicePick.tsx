@@ -24,6 +24,7 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
   const [level, setLevel] = useState(0);
   const [transcript, setTranscript] = useState("");
   const [shownWords, setShownWords] = useState(0);
+  const shownRef = useRef(0);
   const revealDone = useRef<(() => void) | null>(null);
   const [candidates, setCandidates] = useState<Player[]>([]);
   const [pending, setPending] = useState<Player | null>(null);
@@ -39,15 +40,21 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
       }
       return;
     }
-    const t = setTimeout(() => setShownWords((n) => n + 1), 120);
+    const t = setTimeout(() => {
+      shownRef.current += 1;
+      setShownWords(shownRef.current);
+    }, 120);
     return () => clearTimeout(t);
   }, [transcript, shownWords]);
 
   const revealAll = useCallback((text: string) => {
     return new Promise<void>((resolve) => {
+      const total = text.trim().split(/\s+/).filter(Boolean).length;
+      if (total === 0 || shownRef.current >= total) {
+        resolve();
+        return;
+      }
       revealDone.current = resolve;
-      setTranscript(text);
-      if (!text.trim()) resolve();
     });
   }, []);
 
