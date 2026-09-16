@@ -36,7 +36,17 @@ export const Route = createFileRoute("/api/public/transcribe")({
           "model",
           hints ? "openai/gpt-4o-transcribe" : "google/gemini-3.5-transcribe",
         );
-        upstream.append("file", audio, "recording.wav");
+        // Name the part for the real container — a mismatched extension is rejected.
+        const ext =
+          ({
+            "audio/wav": "wav",
+            "audio/wave": "wav",
+            "audio/x-wav": "wav",
+            "audio/mpeg": "mp3",
+            "audio/mp4": "mp4",
+            "audio/webm": "webm",
+          })[audio.type.split(";")[0] ?? ""] ?? "wav";
+        upstream.append("file", audio, `recording.${ext}`);
         upstream.append("stream", "true");
         if (hints) {
           upstream.append(
