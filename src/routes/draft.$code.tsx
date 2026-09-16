@@ -374,8 +374,10 @@ function DraftBoard() {
             className="grid gap-2"
             style={{
               gridTemplateColumns: `repeat(${teams.length}, minmax(${
-                teams.length <= 10 ? 140 : teams.length <= 12 ? 124 : teams.length <= 14 ? 112 : 104
+                (teams.length <= 10 ? 140 : teams.length <= 12 ? 124 : teams.length <= 14 ? 112 : 104) -
+                (compact ? 22 : 0)
               }px, 1fr))`,
+              gap: compact ? "0.25rem" : undefined,
             }}
           >
             {teams.map((team) => (
