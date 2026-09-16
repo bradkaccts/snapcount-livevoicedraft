@@ -199,6 +199,13 @@ function DraftBoard() {
             ),
           )
           .catch(() => undefined);
+        void playerMedia({ data: { playerId: player.id } })
+          .then((media) =>
+            setSpotlight((prev) =>
+              prev && prev.player.id === player.id ? { ...prev, media } : prev,
+            ),
+          )
+          .catch(() => undefined);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "That pick didn't go through");
       } finally {
