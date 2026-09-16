@@ -186,6 +186,7 @@ function DraftBoard() {
           player,
           teamName,
           highlight: null,
+          media: null,
           overall: draft.current_overall,
           round: selection.round,
           pickInRound: selection.pickInRound,
