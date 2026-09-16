@@ -26,16 +26,10 @@ export const Route = createFileRoute("/api/public/transcribe")({
           return new Response("That recording is too long", { status: 413 });
         }
 
-        const hintsField = form.get("hints");
-        const hints = typeof hintsField === "string" ? hintsField.trim().slice(0, 900) : "";
-
         const upstream = new FormData();
-        // A vocabulary hint (the remaining player pool) only helps on the OpenAI
-        // transcription models, which accept a `prompt`; otherwise use Gemini.
-        upstream.append(
-          "model",
-          hints ? "openai/gpt-4o-transcribe" : "google/gemini-3.5-transcribe",
-        );
+        // No vocabulary prompt: passing the remaining player pool made the model
+        // echo that list back verbatim whenever the clip was short or quiet.
+        upstream.append("model", "google/gemini-3.5-transcribe");
         // Name the part for the real container — a mismatched extension is rejected.
         const ext =
           ({
@@ -48,11 +42,6 @@ export const Route = createFileRoute("/api/public/transcribe")({
           })[audio.type.split(";")[0] ?? ""] ?? "wav";
         upstream.append("file", audio, `recording.${ext}`);
         upstream.append("stream", "true");
-        if (hints) {
-          // A bare vocabulary list only. A sentence-shaped prompt gets echoed
-          // back as the transcript when the clip is short, quiet, or silent.
-          upstream.append("prompt", hints);
-        }
 
 
         const response = await fetch(
