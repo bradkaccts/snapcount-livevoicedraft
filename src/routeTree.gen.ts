@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DraftCodeRouteImport } from './routes/draft.$code'
+import { Route as HistoryCodeRouteImport } from './routes/history.$code'
 import { Route as RecapCodeRouteImport } from './routes/recap.$code'
 import { Route as ApiPublicTranscribeRouteImport } from './routes/api/public/transcribe'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const DraftCodeRoute = DraftCodeRouteImport.update({
   id: '/draft/$code',
   path: '/draft/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HistoryCodeRoute = HistoryCodeRouteImport.update({
+  id: '/history/$code',
+  path: '/history/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecapCodeRoute = RecapCodeRouteImport.update({
@@ -38,12 +44,14 @@ const ApiPublicTranscribeRoute = ApiPublicTranscribeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/draft/$code': typeof DraftCodeRoute
+  '/history/$code': typeof HistoryCodeRoute
   '/recap/$code': typeof RecapCodeRoute
   '/api/public/transcribe': typeof ApiPublicTranscribeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/draft/$code': typeof DraftCodeRoute
+  '/history/$code': typeof HistoryCodeRoute
   '/recap/$code': typeof RecapCodeRoute
   '/api/public/transcribe': typeof ApiPublicTranscribeRoute
 }
@@ -51,18 +59,30 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/draft/$code': typeof DraftCodeRoute
+  '/history/$code': typeof HistoryCodeRoute
   '/recap/$code': typeof RecapCodeRoute
   '/api/public/transcribe': typeof ApiPublicTranscribeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/draft/$code' | '/recap/$code' | '/api/public/transcribe'
+  fullPaths:
+    | '/'
+    | '/draft/$code'
+    | '/history/$code'
+    | '/recap/$code'
+    | '/api/public/transcribe'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/draft/$code' | '/recap/$code' | '/api/public/transcribe'
+  to:
+    | '/'
+    | '/draft/$code'
+    | '/history/$code'
+    | '/recap/$code'
+    | '/api/public/transcribe'
   id:
     | '__root__'
     | '/'
     | '/draft/$code'
+    | '/history/$code'
     | '/recap/$code'
     | '/api/public/transcribe'
   fileRoutesById: FileRoutesById
@@ -70,6 +90,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DraftCodeRoute: typeof DraftCodeRoute
+  HistoryCodeRoute: typeof HistoryCodeRoute
   RecapCodeRoute: typeof RecapCodeRoute
   ApiPublicTranscribeRoute: typeof ApiPublicTranscribeRoute
 }
@@ -88,6 +109,13 @@ declare module '@tanstack/react-router' {
       path: '/draft/$code'
       fullPath: '/draft/$code'
       preLoaderRoute: typeof DraftCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/history/$code': {
+      id: '/history/$code'
+      path: '/history/$code'
+      fullPath: '/history/$code'
+      preLoaderRoute: typeof HistoryCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/recap/$code': {
@@ -110,6 +138,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DraftCodeRoute: DraftCodeRoute,
+  HistoryCodeRoute: HistoryCodeRoute,
   RecapCodeRoute: RecapCodeRoute,
   ApiPublicTranscribeRoute: ApiPublicTranscribeRoute,
 }
