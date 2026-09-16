@@ -10,6 +10,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Sparkles,
   Trophy,
   X,
 } from "lucide-react";
@@ -60,7 +61,14 @@ function DraftBoard() {
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
   const [spotlight, setSpotlight] = useState<
-    { player: Player; teamName: string; highlight: HighlightResult | null } | null
+    {
+      player: Player;
+      teamName: string;
+      highlight: HighlightResult | null;
+      overall: number;
+      round: number;
+      pickInRound: number;
+    } | null
   >(null);
 
   const playersById = useMemo(
@@ -110,7 +118,19 @@ function DraftBoard() {
         await pick({ data: { draftId: draft.id, playerId: player.id } });
         refresh();
         setWatchlist((w) => w.filter((id) => id !== player.id));
-        setSpotlight({ player, teamName, highlight: null });
+        const selection = slotForOverall(
+          draft.current_overall,
+          draft.team_count,
+          draft.order_type,
+        );
+        setSpotlight({
+          player,
+          teamName,
+          highlight: null,
+          overall: draft.current_overall,
+          round: selection.round,
+          pickInRound: selection.pickInRound,
+        });
         toast.success(`${teamName} selects ${player.name}`);
         void highlight({ data: { playerId: player.id } })
           .then((result) =>
@@ -298,7 +318,7 @@ function DraftBoard() {
                             </span>
                             <span className="text-[11px] text-muted-foreground">
                               {player.nfl_team} · {round}.
-                              {String(entry!.pick_in_round).padStart(2, "0")}
+                              {String(entry?.pick_in_round ?? 0).padStart(2, "0")}
                             </span>
                           </>
                         ) : (
@@ -336,47 +356,178 @@ function DraftBoard() {
       <AnimatePresence>
         {spotlight && (
           <motion.div
-            initial={{ y: 40, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 40, opacity: 0 }}
-            className="pointer-events-auto fixed bottom-4 left-4 z-50 w-[min(480px,calc(100vw-2rem))] rounded-xl border border-border bg-surface p-4 shadow-2xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-background/95 px-5 py-8 backdrop-blur-md"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${spotlight.player.name} selected by ${spotlight.teamName}`}
           >
-            <button
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 0.7, 0.2] }}
+              transition={{ duration: 1.4, times: [0, 0.25, 1] }}
+              className="pointer-events-none absolute inset-0 bg-celebration"
+            />
+
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-25">
+              <motion.div
+                initial={{ rotate: -30, x: "-85%" }}
+                animate={{ rotate: 35, x: "85%" }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
+                className="h-28 w-[160vw] bg-celebration blur-3xl"
+              />
+            </div>
+
+            <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+              {Array.from({ length: 34 }, (_, index) => (
+                <motion.span
+                  key={index}
+                  initial={{
+                    left: `${8 + ((index * 29) % 84)}%`,
+                    top: "-8%",
+                    rotate: 0,
+                    opacity: 0,
+                  }}
+                  animate={{
+                    top: "108%",
+                    rotate: index % 2 === 0 ? 540 : -540,
+                    opacity: [0, 1, 1, 0],
+                  }}
+                  transition={{
+                    duration: 2.8 + (index % 5) * 0.25,
+                    delay: 0.45 + (index % 7) * 0.08,
+                    ease: "easeIn",
+                  }}
+                  className={`absolute h-3 w-1.5 ${
+                    index % 3 === 0
+                      ? "bg-primary"
+                      : index % 3 === 1
+                        ? "bg-celebration"
+                        : "bg-foreground"
+                  }`}
+                />
+              ))}
+            </div>
+
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => setSpotlight(null)}
               aria-label="Dismiss highlight"
-              className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+              className="absolute right-5 top-5 z-30 text-muted-foreground hover:text-foreground"
             >
-              <X className="h-4 w-4" />
-            </button>
-            <p className="text-xs uppercase tracking-widest text-primary">
-              {spotlight.teamName} selects
-            </p>
-            <p className="font-display text-3xl leading-tight">{spotlight.player.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {spotlight.player.position} · {spotlight.player.nfl_team}
-              {spotlight.player.stat_line ? ` · ${spotlight.player.stat_line}` : ""}
-            </p>
-            {spotlight.highlight ? (
-              <div className="mt-3">
-                {spotlight.highlight.summary && (
-                  <p className="text-sm">{spotlight.highlight.summary}</p>
+              <X className="h-5 w-5" />
+            </Button>
+
+            <motion.section
+              initial={{ opacity: 0, scale: 0.82 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 150, damping: 16, delay: 0.18 }}
+              className="relative flex w-full max-w-5xl flex-col items-center justify-center text-center"
+            >
+              <div className="absolute left-0 top-0 h-14 w-14 border-l-4 border-t-4 border-celebration sm:h-20 sm:w-20" />
+              <div className="absolute bottom-0 right-0 h-14 w-14 border-b-4 border-r-4 border-celebration sm:h-20 sm:w-20" />
+
+              <motion.div
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.4, delay: 0.55 }}
+                className="mb-4 flex items-center gap-2 bg-celebration px-5 py-2 text-xs font-black uppercase italic tracking-[0.2em] text-celebration-foreground sm:text-sm"
+              >
+                <Sparkles className="h-4 w-4" /> The pick is in
+              </motion.div>
+
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.72 }}
+                className="mb-5 text-xs font-bold uppercase tracking-widest text-muted-foreground sm:text-sm"
+              >
+                Round {spotlight.round} · Pick {spotlight.round}.
+                {String(spotlight.pickInRound).padStart(2, "0")} · #{spotlight.overall} overall
+              </motion.p>
+
+              <motion.h2
+                initial={{ opacity: 0, scale: 1.35, filter: "blur(12px)" }}
+                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                transition={{ duration: 0.65, delay: 0.82, ease: [0.2, 0.8, 0.2, 1] }}
+                className="max-w-full px-4 font-display text-6xl uppercase leading-[0.82] text-foreground drop-shadow-[0_0_30px_var(--celebration)] sm:text-8xl lg:text-[9rem]"
+              >
+                {spotlight.player.name}
+              </motion.h2>
+
+              <motion.div
+                initial={{ opacity: 0, scaleX: 0 }}
+                animate={{ opacity: 1, scaleX: 1 }}
+                transition={{ duration: 0.45, delay: 1.15 }}
+                className="mt-5 flex w-full max-w-xl items-center justify-center gap-4"
+              >
+                <span className="h-0.5 flex-1 bg-celebration" />
+                <span className={`pos-chip ${POSITION_CLASS[spotlight.player.position] ?? ""}`}>
+                  {spotlight.player.position}
+                </span>
+                <span className="text-lg font-bold uppercase text-celebration sm:text-2xl">
+                  {spotlight.player.nfl_team}
+                </span>
+                <span className="h-0.5 flex-1 bg-celebration" />
+              </motion.div>
+
+              {spotlight.player.stat_line && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1.35 }}
+                  className="mt-4 text-sm text-muted-foreground sm:text-base"
+                >
+                  {spotlight.player.stat_line}
+                </motion.p>
+              )}
+
+              <motion.div
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.5 }}
+                className="mt-8 border-t border-border px-10 pt-6"
+              >
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+                  Selected by
+                </p>
+                <p className="mt-1 font-display text-3xl uppercase text-foreground sm:text-4xl">
+                  {spotlight.teamName}
+                </p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.75 }}
+                className="mt-5 min-h-12 max-w-xl px-4"
+              >
+                {spotlight.highlight ? (
+                  <>
+                    {spotlight.highlight.summary && (
+                      <p className="text-sm text-muted-foreground">{spotlight.highlight.summary}</p>
+                    )}
+                    {spotlight.highlight.url && (
+                      <Button asChild variant="secondary" className="mt-3">
+                        <a href={spotlight.highlight.url} target="_blank" rel="noreferrer">
+                          <ExternalLink className="h-4 w-4" />
+                          {spotlight.highlight.title ?? "Watch highlights"}
+                        </a>
+                      </Button>
+                    )}
+                  </>
+                ) : (
+                  <p className="animate-pulse text-sm font-semibold uppercase tracking-widest text-celebration-soft">
+                    Finding the highlight reel…
+                  </p>
                 )}
-                {spotlight.highlight.url && (
-                  <a
-                    href={spotlight.highlight.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    {spotlight.highlight.title ?? "Watch highlights"}
-                  </a>
-                )}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Finding highlights…</p>
-            )}
+              </motion.div>
+            </motion.section>
           </motion.div>
         )}
       </AnimatePresence>
