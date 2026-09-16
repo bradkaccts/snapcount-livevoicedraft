@@ -68,6 +68,7 @@ function DraftBoard() {
       player: Player;
       teamName: string;
       highlight: HighlightResult | null;
+      media: PlayerMedia | null;
       overall: number;
       round: number;
       pickInRound: number;
