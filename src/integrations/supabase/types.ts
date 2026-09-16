@@ -261,6 +261,57 @@ export type Database = {
         }
         Relationships: []
       }
+      voice_pick_logs: {
+        Row: {
+          cleaned: string | null
+          confidence: number | null
+          created_at: string
+          draft_id: string
+          heard_team: string | null
+          id: string
+          matched_player_id: string | null
+          outcome: string
+          transcript: string
+        }
+        Insert: {
+          cleaned?: string | null
+          confidence?: number | null
+          created_at?: string
+          draft_id: string
+          heard_team?: string | null
+          id?: string
+          matched_player_id?: string | null
+          outcome: string
+          transcript: string
+        }
+        Update: {
+          cleaned?: string | null
+          confidence?: number | null
+          created_at?: string
+          draft_id?: string
+          heard_team?: string | null
+          id?: string
+          matched_player_id?: string | null
+          outcome?: string
+          transcript?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_pick_logs_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_pick_logs_matched_player_id_fkey"
+            columns: ["matched_player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
