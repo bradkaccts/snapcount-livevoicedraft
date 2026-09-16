@@ -61,6 +61,21 @@ function DraftBoard() {
   const playerMedia = useServerFn(findPlayerMedia);
 
   
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setCompact(window.localStorage.getItem("draft-board-density") === "compact");
+  }, []);
+  const toggleDensity = useCallback(() => {
+    setCompact((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("draft-board-density", next ? "compact" : "comfortable");
+      }
+      return next;
+    });
+  }, []);
+
   const [paused, setPaused] = useState(false);
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
