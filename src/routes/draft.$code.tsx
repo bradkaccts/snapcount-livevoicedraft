@@ -544,6 +544,43 @@ function DraftBoard() {
                 <Sparkles className="h-4 w-4" /> The pick is in
               </motion.div>
 
+              <motion.div
+                initial={{ opacity: 0, scale: 0.5, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.62 }}
+                className="mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 shadow-[0_0_40px_var(--celebration)] sm:h-32 sm:w-32"
+                style={{
+                  borderColor: spotlightPalette.primary,
+                  backgroundColor: spotlightPalette.secondary,
+                }}
+              >
+                {spotlight.media?.headshotUrl ? (
+                  <img
+                    src={spotlight.media.headshotUrl}
+                    alt={spotlight.player.name}
+                    className="h-full w-full object-cover"
+                    onError={() =>
+                      setSpotlight((prev) =>
+                        prev
+                          ? { ...prev, media: { ...prev.media!, headshotUrl: null } }
+                          : prev,
+                      )
+                    }
+                  />
+                ) : (
+                  <span
+                    className="font-display text-3xl uppercase sm:text-4xl"
+                    style={{ color: readableOn(spotlightPalette.secondary) }}
+                  >
+                    {spotlight.player.name
+                      .split(" ")
+                      .map((part) => part[0])
+                      .join("")
+                      .slice(0, 3)}
+                  </span>
+                )}
+              </motion.div>
+
               <motion.p
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
