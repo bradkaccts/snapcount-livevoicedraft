@@ -14,7 +14,212 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      draft_teams: {
+        Row: {
+          color: string
+          created_at: string
+          draft_id: string
+          id: string
+          manager: string | null
+          name: string
+          slot: number
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          draft_id: string
+          id?: string
+          manager?: string | null
+          name: string
+          slot: number
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          draft_id?: string
+          id?: string
+          manager?: string | null
+          name?: string
+          slot?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_teams_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drafts: {
+        Row: {
+          clock_seconds: number
+          created_at: string
+          current_overall: number
+          id: string
+          league_name: string
+          order_type: string
+          room_code: string
+          rounds: number
+          status: string
+          team_count: number
+          updated_at: string
+        }
+        Insert: {
+          clock_seconds?: number
+          created_at?: string
+          current_overall?: number
+          id?: string
+          league_name: string
+          order_type?: string
+          room_code: string
+          rounds: number
+          status?: string
+          team_count: number
+          updated_at?: string
+        }
+        Update: {
+          clock_seconds?: number
+          created_at?: string
+          current_overall?: number
+          id?: string
+          league_name?: string
+          order_type?: string
+          room_code?: string
+          rounds?: number
+          status?: string
+          team_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      highlights: {
+        Row: {
+          created_at: string
+          player_id: string
+          source: string | null
+          summary: string | null
+          title: string | null
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          player_id: string
+          source?: string | null
+          summary?: string | null
+          title?: string | null
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          player_id?: string
+          source?: string | null
+          summary?: string | null
+          title?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "highlights_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      picks: {
+        Row: {
+          created_at: string
+          draft_id: string
+          id: string
+          overall: number
+          pick_in_round: number
+          player_id: string
+          round: number
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          draft_id: string
+          id?: string
+          overall: number
+          pick_in_round: number
+          player_id: string
+          round: number
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          draft_id?: string
+          id?: string
+          overall?: number
+          pick_in_round?: number
+          player_id?: string
+          round?: number
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "picks_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "picks_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "picks_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "draft_teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      players: {
+        Row: {
+          adp: number | null
+          bye_week: number | null
+          created_at: string
+          id: string
+          name: string
+          nfl_team: string
+          position: string
+          rank: number
+          stat_line: string | null
+        }
+        Insert: {
+          adp?: number | null
+          bye_week?: number | null
+          created_at?: string
+          id?: string
+          name: string
+          nfl_team: string
+          position: string
+          rank: number
+          stat_line?: string | null
+        }
+        Update: {
+          adp?: number | null
+          bye_week?: number | null
+          created_at?: string
+          id?: string
+          name?: string
+          nfl_team?: string
+          position?: string
+          rank?: number
+          stat_line?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
