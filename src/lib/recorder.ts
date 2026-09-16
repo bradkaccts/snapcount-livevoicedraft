@@ -107,9 +107,13 @@ export async function startRecording(options?: {
 /** Uploads a recording and yields transcript fragments as they arrive. */
 export async function* streamTranscription(
   blob: Blob,
+  hints?: string[],
 ): AsyncGenerator<{ delta?: string; text?: string }> {
   const form = new FormData();
   form.append("audio", blob, "recording.wav");
+  if (hints && hints.length > 0) {
+    form.append("hints", hints.join(", ").slice(0, 900));
+  }
   const res = await fetch("/api/public/transcribe", { method: "POST", body: form });
   if (!res.ok || !res.body) {
     throw new Error((await res.text().catch(() => "")) || "Could not hear that");
