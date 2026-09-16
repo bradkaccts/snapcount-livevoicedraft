@@ -92,10 +92,12 @@ async function commonsSearch(query: string, limit: number): Promise<Candidate[]>
   }
 }
 
+type Verdict = { score: number; nameMatch: boolean; teamMatch: boolean; college: boolean };
+
 function scoreCandidate(
   candidate: Candidate,
   player: { name: string; nfl_team: string },
-): number {
+): Verdict {
   const words = teamWords(player.nfl_team);
   const rivals = rivalNicknames(player.nfl_team);
   const text = candidate.text;
@@ -105,22 +107,32 @@ function scoreCandidate(
   let score = 0;
 
   // The photo must at least be of this player.
-  if (text.includes(player.name.toLowerCase())) score += 3;
+  const nameMatch = text.includes(player.name.toLowerCase());
+  if (nameMatch) score += 3;
   else if (text.includes(surname)) score += 1;
   else score -= 4;
 
   // Current team wording is the strongest signal of the right uniform.
+  let teamMatch = false;
   if (words) {
-    if (text.includes(words.full.toLowerCase())) score += 6;
-    else if (text.includes(words.nickname.toLowerCase())) score += 5;
-    else if (words.city && text.includes(words.city.toLowerCase())) score += 2;
+    if (text.includes(words.full.toLowerCase())) {
+      score += 6;
+      teamMatch = true;
+    } else if (text.includes(words.nickname.toLowerCase())) {
+      score += 5;
+      teamMatch = true;
+    } else if (words.city && text.includes(words.city.toLowerCase())) {
+      score += 2;
+      teamMatch = true;
+    }
   }
 
   // Former-team photos are wrong uniforms.
   if (rivals.some((nickname) => text.includes(nickname))) score -= 5;
 
   // College / pre-draft imagery.
-  if (COLLEGE_WORDS.test(text)) score -= 6;
+  const college = COLLEGE_WORDS.test(text);
+  if (college) score -= 6;
 
   // Recency.
   if (candidate.year) {
@@ -135,7 +147,7 @@ function scoreCandidate(
   if (candidate.width >= 1200) score += 1;
   if (candidate.width > candidate.height) score += 0.5;
 
-  return score;
+  return { score, nameMatch, teamMatch, college };
 }
 
 async function wikipediaThumb(name: string): Promise<string | null> {
@@ -206,19 +218,23 @@ export const findPlayerMedia = createServerFn({ method: "POST" })
     const scored = [...byUrl.values()]
       .map((candidate) => ({
         candidate,
-        score: scoreCandidate(candidate, {
+        ...scoreCandidate(candidate, {
           name: player.name,
           nfl_team: player.nfl_team,
         }),
       }))
+      // Only photos that name the player AND his current club, and carry no
+      // college wording, can be shown — a wrong uniform is worse than none.
+      .filter(
+        (entry) =>
+          entry.nameMatch && entry.teamMatch && !entry.college && entry.score >= MIN_SCORE,
+      )
       .sort((a, b) => b.score - a.score);
 
-    const best = scored[0];
-    const accepted = best && best.score >= MIN_SCORE ? best : null;
+    const accepted = scored[0] ?? null;
 
     const portrait = scored.find(
       (entry) =>
-        entry.score >= MIN_SCORE &&
         entry.candidate.height >= entry.candidate.width &&
         entry.candidate.url !== accepted?.candidate.url,
     );
