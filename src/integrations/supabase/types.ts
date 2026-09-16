@@ -190,21 +190,30 @@ export type Database = {
           created_at: string
           headshot_url: string | null
           player_id: string
+          score: number | null
+          selector_version: number
           source: string | null
+          updated_at: string
         }
         Insert: {
           action_url?: string | null
           created_at?: string
           headshot_url?: string | null
           player_id: string
+          score?: number | null
+          selector_version?: number
           source?: string | null
+          updated_at?: string
         }
         Update: {
           action_url?: string | null
           created_at?: string
           headshot_url?: string | null
           player_id?: string
+          score?: number | null
+          selector_version?: number
           source?: string | null
+          updated_at?: string
         }
         Relationships: [
           {

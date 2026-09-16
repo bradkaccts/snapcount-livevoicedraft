@@ -4,6 +4,7 @@ export type TeamPalette = {
   secondary: string;
 };
 
+
 /** Primary/secondary colors for every NFL club, keyed by abbreviation. */
 export const NFL_TEAMS: Record<string, TeamPalette> = {
   ARI: { name: "Arizona Cardinals", primary: "#97233F", secondary: "#FFB612" },
@@ -71,4 +72,29 @@ export function lighten(hex: string, amount: number): string {
   return `#${mix(parseInt(clean.slice(0, 2), 16))}${mix(
     parseInt(clean.slice(2, 4), 16),
   )}${mix(parseInt(clean.slice(4, 6), 16))}`;
+}
+
+/** City and nickname words for a club, used to match photo captions. */
+export function teamWords(abbr: string | null | undefined): {
+  city: string;
+  nickname: string;
+  full: string;
+} | null {
+  const key = abbr?.toUpperCase();
+  if (!key || !NFL_TEAMS[key]) return null;
+  const full = NFL_TEAMS[key].name;
+  const parts = full.split(" ");
+  const nickname = parts[parts.length - 1] ?? full;
+  return { city: parts.slice(0, -1).join(" "), nickname, full };
+}
+
+/** Nicknames of every other club, for spotting former-team photos. */
+export function rivalNicknames(abbr: string | null | undefined): string[] {
+  const key = abbr?.toUpperCase();
+  return Object.entries(NFL_TEAMS)
+    .filter(([code]) => code !== key)
+    .map(([, team]) => {
+      const parts = team.name.split(" ");
+      return (parts[parts.length - 1] ?? team.name).toLowerCase();
+    });
 }
