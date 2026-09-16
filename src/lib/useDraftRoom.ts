@@ -96,8 +96,27 @@ export function useDraftRoom(code: string) {
       const { data, error } = await supabase
         .from("players")
         .select("id, name, position, nfl_team, bye_week, rank, stat_line")
+        .eq("active", true)
         .order("rank")
-        .limit(1000);
+        .limit(1500);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Player[];
+    },
+  });
+
+  const pickedIds = (picksQuery.data ?? []).map((p) => p.player_id).sort();
+
+  // Players drafted in this room that are no longer in the active pool
+  // (e.g. dropped from the live feed) still need to render on the board.
+  const pickedPlayersQuery = useQuery({
+    queryKey: ["picked-players", pickedIds],
+    enabled: pickedIds.length > 0,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("players")
+        .select("id, name, position, nfl_team, bye_week, rank, stat_line")
+        .in("id", pickedIds);
       if (error) throw new Error(error.message);
       return (data ?? []) as Player[];
     },
