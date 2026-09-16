@@ -449,7 +449,7 @@ function DraftBoard() {
                 src={spotlight.media.actionUrl}
                 alt={`${spotlight.player.name} in action`}
                 initial={{ opacity: 0, scale: 1.18 }}
-                animate={{ opacity: 0.55, scale: 1 }}
+                animate={{ opacity: 0.4, scale: 1 }}
                 transition={{ duration: 6, ease: "easeOut" }}
                 onError={() =>
                   setSpotlight((prev) =>
@@ -463,7 +463,7 @@ function DraftBoard() {
             <div
               className="pointer-events-none absolute inset-0"
               style={{
-                background: `radial-gradient(120% 90% at 50% 45%, transparent 5%, ${spotlightPalette.secondary}55 55%, rgba(6,8,12,0.94) 100%)`,
+                background: `radial-gradient(120% 90% at 50% 45%, rgba(6,8,12,0.35) 5%, ${spotlightPalette.secondary}55 55%, rgba(6,8,12,0.94) 100%)`,
               }}
             />
 
