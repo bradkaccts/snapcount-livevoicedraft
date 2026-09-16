@@ -143,9 +143,8 @@ export type VoiceCandidate<T extends MatchablePlayer> = {
   confidence: number;
 };
 
-/** Score one player against the spoken name phrase, 0..1. */
-export function scorePlayer(phrase: string, player: MatchablePlayer): number {
-  const q = phrase.trim();
+/** Score a single spoken fragment against a player name, 0..1. */
+function scoreFragment(q: string, player: MatchablePlayer): number {
   if (!q) return 0;
   const full = cleanName(player.name);
   const parts = full.split(" ");
@@ -156,15 +155,18 @@ export function scorePlayer(phrase: string, player: MatchablePlayer): number {
   let score = similarity(q, full);
   score = Math.max(score, similarity(q, `${first} ${last}`));
   if (qParts.length === 1) {
-    score = Math.max(score, similarity(q, last) * 0.9);
+    // A lone token only counts as a surname match, and only if it is distinctive.
+    score = Math.max(score, q.length >= 4 ? similarity(q, last) * 0.9 : 0);
   }
   if (full === q) score = 1;
   if (full.includes(q) && q.length > 4) score = Math.max(score, 0.9);
 
-  // phonetic rescue for mis-spelled surnames
+  // phonetic rescue for mis-heard surnames
   const phoneticScore = similarity(phonetic(q), phonetic(full));
-  const phoneticLast = similarity(phonetic(qParts[qParts.length - 1] ?? ""), phonetic(last));
-  score = Math.max(score, phoneticScore * 0.85, phoneticLast * 0.8);
+  score = Math.max(score, phoneticScore * 0.85);
+  if (qParts.length === 1 && q.length >= 4) {
+    score = Math.max(score, similarity(phonetic(q), phonetic(last)) * 0.8);
+  }
 
   // every spoken token present in the name
   const covered = qParts.filter((p) => p.length > 1 && parts.some((n) => n.startsWith(p)));
@@ -173,6 +175,29 @@ export function scorePlayer(phrase: string, player: MatchablePlayer): number {
   }
   return Math.min(1, score);
 }
+
+/**
+ * Score a player against the spoken phrase by testing every 1–4 word window.
+ * Sentences carry chatter ("I want X in the first round") and sometimes several
+ * names, so matching the whole phrase as one name picks the wrong player.
+ */
+export function scorePlayer(phrase: string, player: MatchablePlayer): number {
+  const tokens = phrase.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return 0;
+  const nameLen = cleanName(player.name).split(" ").length;
+  const maxWindow = Math.min(tokens.length, Math.max(3, nameLen + 1));
+  let best = 0;
+  for (let size = 1; size <= maxWindow; size++) {
+    for (let i = 0; i + size <= tokens.length; i++) {
+      const window = tokens.slice(i, i + size).join(" ");
+      const score = scoreFragment(window, player);
+      if (score > best) best = score;
+      if (best === 1) return 1;
+    }
+  }
+  return best;
+}
+
 
 export type VoiceResolution<T extends MatchablePlayer> = {
   status: "auto" | "confirm" | "none";

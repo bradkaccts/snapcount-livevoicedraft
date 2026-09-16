@@ -49,11 +49,11 @@ export const Route = createFileRoute("/api/public/transcribe")({
         upstream.append("file", audio, `recording.${ext}`);
         upstream.append("stream", "true");
         if (hints) {
-          upstream.append(
-            "prompt",
-            `Fantasy football draft call. Expect NFL player and team names such as: ${hints}.`,
-          );
+          // A bare vocabulary list only. A sentence-shaped prompt gets echoed
+          // back as the transcript when the clip is short, quiet, or silent.
+          upstream.append("prompt", hints);
         }
+
 
         const response = await fetch(
           "https://ai.gateway.lovable.dev/v1/audio/transcriptions",
