@@ -1,43 +1,40 @@
-# Player data source: ESPN or Yahoo
+# Real player data from Sleeper
 
-Let the league administrator choose where the player pool comes from during league setup, and load real rankings from that provider instead of the built-in seeded list.
+Replace the hand-seeded player pool with live NFL player data from Sleeper's public API. No source picker — Sleeper is the single integration, and the existing built-in list stays as the automatic fallback if Sleeper is unreachable.
+
+## Cost and openness
+
+Sleeper's read API is genuinely free and public: no account, no API key, no OAuth, documented and rate-limited to a generous ceiling (they ask for under 1000 calls per minute). The player list is one call that returns every NFL player with position, pro team, and status. Trending/ADP-style ordering comes from their public trending endpoint plus search rank. Nothing here costs money and nothing needs the admin to register anything.
+
+Caveat worth naming: Sleeper's player dump is a large payload and their terms ask that it be called at most once per day — so the app caches it server-side and refreshes on a schedule rather than per draft.
 
 ## What the admin sees
 
-In the **League setup** panel, a new "Player data" choice with three options:
+The League setup panel gains a small, quiet status line under the league fields:
 
-- **ESPN** — rankings and ADP from ESPN's fantasy football player list.
-- **Yahoo** — rankings and ADP from Yahoo Fantasy.
-- **Built-in list** — the current seeded pool (always available, used as fallback).
+- "Player list: 1,247 players, updated 2 hours ago" with a "Refresh" link.
+- If Sleeper is unreachable: "Using the built-in player list — couldn't reach the live player feed." Drafting still works exactly as today.
 
-After picking a source, a small "Refresh player list" action fetches the latest pool and shows the count and "last updated" time so the admin knows the board is current. Starting a draft locks that source into the draft room, and the board, search, voice picking and highlights all run off it unchanged.
-
-## Cost and openness — read this before approving
-
-- **ESPN: free, no account, but unofficial.** ESPN publishes no documented public API. There is a public, no-authentication endpoint their own fantasy site uses that returns the full player pool with rankings, ADP, positions, pro team and bye weeks. It works today, is free, but it is not a supported product — ESPN can change or block it without notice. The app will treat it as best-effort and fall back to the built-in list on failure.
-- **Yahoo: free to use, but NOT open — it requires credentials.** Yahoo Fantasy Sports data is only available through their official API, which requires an OAuth-registered Yahoo developer app (free to register) and a signed-in Yahoo account to authorize. There is no anonymous public feed. To enable the Yahoo option you (the league owner) must create a Yahoo developer app and provide its client ID and secret, which get stored securely on the server. Until that is done, the Yahoo option will show as "needs setup" rather than silently failing.
-- Neither provider's data is open-source or redistributable; it is fetched at the league's request and cached only to keep the draft fast.
-
-If you would rather avoid the Yahoo registration step, a fully open alternative exists (Sleeper's free public API, no key required) and can replace or join Yahoo in the list — say the word and I'll swap it in.
+No provider choice, no configuration. Everything else in setup is unchanged.
 
 ## How it works
 
-- Add a `player_sources` cache table plus provider columns on `players`: `source` ('espn' | 'yahoo' | 'builtin'), `external_id`, and a unique key on (source, external_id). Existing seeded rows become `builtin`, so nothing currently working breaks.
-- Add `player_source` to `drafts`. Every player query in the draft room, search panel, voice matcher and history filters on the draft's source.
-- New server function `importPlayers({ source })`:
-  - ESPN: fetch the public fantasy players feed, map to name / position / pro team abbreviation / bye week / rank / ADP / short stat line, normalize D/ST rows to the app's `DST` position so voice DST calls keep working, then upsert on (source, external_id).
-  - Yahoo: OAuth2 client-credentials-style flow against the Yahoo Fantasy API using stored app credentials, paginate the NFL players collection with draft analysis (ADP) and bye weeks, map the same way and upsert. If credentials are absent, return a clear "Yahoo not configured" result.
-  - Both paths validate every row with Zod and skip malformed entries rather than aborting the import.
-- Results cached in `player_sources` with a fetched-at timestamp; imports only re-run on explicit refresh or when the cache is older than 12 hours, so drafts start instantly.
-- Provider failures never block a draft: the setup screen reports the failure in plain language and offers to start on the built-in list.
-- Team abbreviation mapping goes through the existing `nfl-teams.ts` helpers so team colors, media lookup and DST matching stay correct across providers.
-- Yahoo credentials stored as server secrets (requested through the secure secret form, never in code).
+- Add columns to `players`: `source` ('sleeper' | 'builtin'), `external_id`, `active`, `updated_at`, with a unique key on (source, external_id). Existing seeded rows are marked `builtin` so nothing currently working breaks.
+- Add a `player_sync` table holding the last successful sync time, row count, and last error.
+- New server function `syncPlayers()`:
+  - Fetch Sleeper's NFL players collection, keep active players at the fantasy positions the app supports (QB, RB, WR, TE, K, DEF), and map DEF rows to the app's `DST` position with the club name so voice DST calls keep working.
+  - Fetch bye weeks and derive ranking/ADP ordering from Sleeper's search rank, refined by their trending-adds endpoint.
+  - Build a short stat line from the available player fields (team, position, age/experience, injury status when set).
+  - Validate every row with Zod, skip malformed entries instead of aborting, and upsert on (source, external_id). Players no longer listed are flagged inactive rather than deleted, so historical picks keep resolving.
+  - Record the result in `player_sync`.
+- Sync runs on demand from the Refresh link and automatically when the cache is older than 24 hours; a draft never waits on a cold fetch.
+- Draft room, player search, voice matcher and history read active Sleeper players when a successful sync exists, otherwise the built-in rows — one shared query helper so all surfaces agree.
+- Team abbreviations pass through the existing `nfl-teams.ts` helpers so team colors, player media lookup and DST matching stay correct.
 
 ## Build order
 
-1. Schema: provider columns on `players`, `player_sources` cache, `player_source` on `drafts`, backfill existing rows as `builtin`.
-2. ESPN importer server function + normalization and mapping helpers.
-3. League setup UI: source selector, refresh action, pool count / last-updated, graceful failure copy.
-4. Scope draft room, player search, voice matcher and history queries to the draft's source.
-5. Yahoo importer behind credentials, with a "needs setup" state until they're provided.
-6. Verify a full draft on each source: search, voice pick including a DST call, celebration media, ticker, export.
+1. Schema: provider columns on `players`, `player_sync` table, backfill existing rows as `builtin`.
+2. Sleeper sync server function with mapping, DST normalization, ranking and validation.
+3. Shared "active player pool" query helper; point the draft board, search, voice matching and history at it.
+4. Setup panel status line with count, last-updated and Refresh, plus the fallback message.
+5. Verify a full draft on live Sleeper data: search, a voice pick, a DST voice call, celebration media, ticker, CSV export — then verify the same with the feed forced to fail so the fallback path is proven.
