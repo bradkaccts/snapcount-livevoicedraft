@@ -110,11 +110,12 @@ function DraftBoard() {
   }, [paused, complete, draft, draft?.current_overall]);
 
   // Let the celebration play out (~4s), hold for 3s, then return to the board.
+  const spotlightKey = spotlight ? `${spotlight.overall}-${spotlight.player.id}` : null;
   useEffect(() => {
-    if (!spotlight) return;
+    if (!spotlightKey) return;
     const timer = setTimeout(() => setSpotlight(null), 7000);
     return () => clearTimeout(timer);
-  }, [spotlight]);
+  }, [spotlightKey]);
 
   const submitPick = useCallback(
     async (player: Player) => {
