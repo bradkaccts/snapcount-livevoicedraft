@@ -78,6 +78,17 @@ function defaultTeams(count: number): TeamDraftEntry[] {
   }));
 }
 
+function relativeTime(iso: string | null): string {
+  if (!iso) return "just now";
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (minutes < 2) return "just now";
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
 function SetupPage() {
   const navigate = useNavigate();
   const create = useServerFn(createDraft);
