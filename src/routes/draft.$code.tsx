@@ -22,6 +22,8 @@ import { PlayerList } from "@/components/draft/PlayerList";
 import { VoicePick } from "@/components/draft/VoicePick";
 import { makePick, undoLastPick } from "@/lib/draft.functions";
 import { findPlayerHighlight, type HighlightResult } from "@/lib/highlights.functions";
+import { findPlayerMedia, type PlayerMedia } from "@/lib/player-media.functions";
+import { lighten, readableOn, teamPalette } from "@/lib/nfl-teams";
 import {
   POSITION_CLASS,
   formatClock,
@@ -56,6 +58,7 @@ function DraftBoard() {
   const pick = useServerFn(makePick);
   const undo = useServerFn(undoLastPick);
   const highlight = useServerFn(findPlayerHighlight);
+  const playerMedia = useServerFn(findPlayerMedia);
 
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [paused, setPaused] = useState(false);
@@ -66,6 +69,7 @@ function DraftBoard() {
       player: Player;
       teamName: string;
       highlight: HighlightResult | null;
+      media: PlayerMedia | null;
       overall: number;
       round: number;
       pickInRound: number;
@@ -82,6 +86,8 @@ function DraftBoard() {
       overall: number;
     } | null
   >(null);
+
+  const spotlightPalette = teamPalette(spotlight?.player.nfl_team);
 
   const playersById = useMemo(
     () => new Map(players.map((p) => [p.id, p])),
@@ -182,6 +188,7 @@ function DraftBoard() {
           player,
           teamName,
           highlight: null,
+          media: null,
           overall: draft.current_overall,
           round: selection.round,
           pickInRound: selection.pickInRound,
@@ -194,13 +201,20 @@ function DraftBoard() {
             ),
           )
           .catch(() => undefined);
+        void playerMedia({ data: { playerId: player.id } })
+          .then((media) =>
+            setSpotlight((prev) =>
+              prev && prev.player.id === player.id ? { ...prev, media } : prev,
+            ),
+          )
+          .catch(() => undefined);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "That pick didn't go through");
       } finally {
         setBusy(false);
       }
     },
-    [draft, busy, complete, onTheClock, pick, refresh, highlight],
+    [draft, busy, complete, onTheClock, pick, refresh, highlight, playerMedia],
   );
 
   const exportCsv = () => {
@@ -421,13 +435,45 @@ function DraftBoard() {
             role="dialog"
             aria-modal="true"
             aria-label={`${spotlight.player.name} selected by ${spotlight.teamName}`}
+            style={
+              {
+                "--celebration": spotlightPalette.primary,
+                "--celebration-foreground": readableOn(spotlightPalette.primary),
+                "--celebration-soft": lighten(spotlightPalette.primary, 0.35),
+              } as Record<string, string>
+            }
           >
+            {spotlight.media?.actionUrl && (
+              <motion.img
+                key={spotlight.media.actionUrl}
+                src={spotlight.media.actionUrl}
+                alt={`${spotlight.player.name} in action`}
+                initial={{ opacity: 0, scale: 1.18 }}
+                animate={{ opacity: 0.4, scale: 1 }}
+                transition={{ duration: 6, ease: "easeOut" }}
+                onError={() =>
+                  setSpotlight((prev) =>
+                    prev ? { ...prev, media: { ...prev.media!, actionUrl: null } } : prev,
+                  )
+                }
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+              />
+            )}
+
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background: `radial-gradient(120% 90% at 50% 45%, rgba(6,8,12,0.35) 5%, ${spotlightPalette.secondary}55 55%, rgba(6,8,12,0.94) 100%)`,
+              }}
+            />
+
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 0.7, 0.2] }}
               transition={{ duration: 1.4, times: [0, 0.25, 1] }}
-              className="pointer-events-none absolute inset-0 bg-celebration"
+              className="pointer-events-none absolute inset-0 bg-celebration mix-blend-overlay"
             />
+
 
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-25">
               <motion.div
@@ -496,6 +542,43 @@ function DraftBoard() {
                 className="mb-4 flex items-center gap-2 bg-celebration px-5 py-2 text-xs font-black uppercase italic tracking-[0.2em] text-celebration-foreground sm:text-sm"
               >
                 <Sparkles className="h-4 w-4" /> The pick is in
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.5, y: 14 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.62 }}
+                className="mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 shadow-[0_0_40px_var(--celebration)] sm:h-32 sm:w-32"
+                style={{
+                  borderColor: spotlightPalette.primary,
+                  backgroundColor: spotlightPalette.secondary,
+                }}
+              >
+                {spotlight.media?.headshotUrl ? (
+                  <img
+                    src={spotlight.media.headshotUrl}
+                    alt={spotlight.player.name}
+                    className="h-full w-full object-cover"
+                    onError={() =>
+                      setSpotlight((prev) =>
+                        prev
+                          ? { ...prev, media: { ...prev.media!, headshotUrl: null } }
+                          : prev,
+                      )
+                    }
+                  />
+                ) : (
+                  <span
+                    className="font-display text-3xl uppercase sm:text-4xl"
+                    style={{ color: readableOn(spotlightPalette.secondary) }}
+                  >
+                    {spotlight.player.name
+                      .split(" ")
+                      .map((part) => part[0])
+                      .join("")
+                      .slice(0, 3)}
+                  </span>
+                )}
               </motion.div>
 
               <motion.p
