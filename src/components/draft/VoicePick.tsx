@@ -10,7 +10,7 @@ import type { Player } from "@/lib/useDraftRoom";
 type Props = {
   players: Player[];
   onConfirm: (player: Player) => void;
-  disabled?: boolean;
+  disabled?: boolean | undefined;
 };
 
 export function VoicePick({ players, onConfirm, disabled }: Props) {

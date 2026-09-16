@@ -138,10 +138,10 @@ function DraftBoard() {
         round: p.round,
         pickInRound: p.pick_in_round,
         team: team?.name ?? "",
-        manager: team?.manager ?? "",
         player: player?.name ?? "",
         position: player?.position ?? "",
         nflTeam: player?.nfl_team ?? "",
+        bye: player?.bye_week ?? null,
       };
     });
     const blob = new Blob([picksToCsv(rows)], { type: "text/csv" });

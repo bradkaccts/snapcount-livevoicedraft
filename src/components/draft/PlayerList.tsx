@@ -14,7 +14,7 @@ type Props = {
   watchlist: string[];
   onToggleWatch: (playerId: string) => void;
   onDraft: (player: Player) => void;
-  disabled?: boolean;
+  disabled?: boolean | undefined;
 };
 
 export function PlayerList({
@@ -157,7 +157,7 @@ function PlayerRow({
   watched: boolean;
   onToggleWatch: () => void;
   onDraft: () => void;
-  disabled?: boolean;
+  disabled?: boolean | undefined;
 }) {
   const x = useMotionValue(0);
   const draftOpacity = useTransform(x, [20, 110], [0, 1]);
