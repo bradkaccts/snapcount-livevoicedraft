@@ -345,6 +345,9 @@ function DraftBoard() {
             <Download className="h-4 w-4" />
           </Button>
           <Button asChild variant="secondary">
+            <Link to="/history/$code" params={{ code }}>History</Link>
+          </Button>
+          <Button asChild variant="secondary">
             <Link to="/recap/$code" params={{ code }}>Recap</Link>
           </Button>
         </div>
