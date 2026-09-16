@@ -42,11 +42,6 @@ export const Route = createFileRoute("/api/public/transcribe")({
           })[audio.type.split(";")[0] ?? ""] ?? "wav";
         upstream.append("file", audio, `recording.${ext}`);
         upstream.append("stream", "true");
-        if (hints) {
-          // A bare vocabulary list only. A sentence-shaped prompt gets echoed
-          // back as the transcript when the clip is short, quiet, or silent.
-          upstream.append("prompt", hints);
-        }
 
 
         const response = await fetch(
