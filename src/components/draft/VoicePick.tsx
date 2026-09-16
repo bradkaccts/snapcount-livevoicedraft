@@ -82,15 +82,16 @@ export function VoicePick({ draftId, players, onConfirm, disabled }: Props) {
         return;
       }
 
-      // Guard against the model parroting the vocabulary hint back on a quiet clip.
-      const lower = heard.toLowerCase();
-      const echoed = hintNames.filter((n) => lower.includes(n.toLowerCase())).length;
-      if (echoed >= 3) {
+      // Silence and near-silence come back as boilerplate ("context:", "thank you").
+      const lower = heard.trim().toLowerCase().replace(/[^a-z\s]/g, "").trim();
+      const junk = ["", "context", "thank you", "thanks", "you", "bye", "music", "subtitles"];
+      if (junk.includes(lower) || lower.length < 3) {
         setTranscript("");
-        toast.error("Didn't catch that — speak a little louder and hold the button while talking.");
+        toast.error("Didn't catch that — hold the button and speak the player's name clearly.");
         setState("idle");
         return;
       }
+
 
 
       const result: ResolvedVoicePick = await resolveVoicePick({
