@@ -98,16 +98,18 @@ function DraftBoard() {
         ) ?? null
       : null;
 
+  // The clock holds at its last value while the celebration is on screen,
+  // then resets to the full clock and starts counting the moment it closes.
   useEffect(() => {
-    if (!draft) return;
+    if (!draft || spotlight) return;
     setRemaining(draft.clock_seconds);
-  }, [draft?.current_overall, draft?.clock_seconds, draft]);
+  }, [draft?.current_overall, draft?.clock_seconds, draft, spotlight]);
 
   useEffect(() => {
-    if (paused || complete || !draft) return;
+    if (paused || complete || spotlight || !draft) return;
     const id = setInterval(() => setRemaining((r) => (r > 0 ? r - 1 : 0)), 1000);
     return () => clearInterval(id);
-  }, [paused, complete, draft, draft?.current_overall]);
+  }, [paused, complete, draft, draft?.current_overall, spotlight]);
 
   // Let the celebration play out (~4s), hold for 3s, then return to the board.
   const spotlightKey = spotlight ? `${spotlight.overall}-${spotlight.player.id}` : null;
