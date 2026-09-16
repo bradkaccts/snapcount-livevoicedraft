@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createDraft } from "@/lib/draft.functions";
+import { syncPlayers } from "@/lib/players.functions";
 import { shuffle } from "@/lib/draft-utils";
 
 export const Route = createFileRoute("/")({
