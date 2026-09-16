@@ -411,7 +411,7 @@ function DraftBoard() {
                     return (
                       <li
                         key={round}
-                        className={`rounded-md px-2 py-1.5 text-sm ${
+                        className={`rounded-md px-2 ${compact ? "py-1 text-xs" : "py-1.5 text-sm"} ${
                           player
                             ? "bg-surface"
                             : isCurrent
@@ -421,16 +421,18 @@ function DraftBoard() {
                       >
                         {player ? (
                           <>
-                            <span className="flex items-center gap-1.5">
-                              <span className={`pos-chip ${POSITION_CLASS[player.position] ?? ""}`}>
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              <span className={`pos-chip shrink-0 ${POSITION_CLASS[player.position] ?? ""}`}>
                                 {player.position}
                               </span>
                               <span className="truncate font-semibold">{player.name}</span>
                             </span>
-                            <span className="text-[11px] text-muted-foreground">
-                              {player.nfl_team} · {round}.
-                              {String(entry?.pick_in_round ?? 0).padStart(2, "0")}
-                            </span>
+                            {!compact && (
+                              <span className="text-[11px] text-muted-foreground">
+                                {player.nfl_team} · {round}.
+                                {String(entry?.pick_in_round ?? 0).padStart(2, "0")}
+                              </span>
+                            )}
                           </>
                         ) : (
                           <span className="text-[11px] uppercase tracking-widest text-muted-foreground">
