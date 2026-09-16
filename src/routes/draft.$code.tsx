@@ -593,12 +593,12 @@ function DraftBoard() {
                     delay: 0.45 + (index % 7) * 0.08,
                     ease: "easeIn",
                   }}
-                  className={`absolute h-3 w-1.5 ${
+                  className={`confetti-piece absolute h-3 w-1.5 ${
                     index % 3 === 0
-                      ? "bg-primary"
+                      ? "confetti-gold"
                       : index % 3 === 1
-                        ? "bg-celebration"
-                        : "bg-foreground"
+                        ? "confetti-team"
+                        : "confetti-silver"
                   }`}
                 />
               ))}
