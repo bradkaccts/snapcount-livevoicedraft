@@ -212,7 +212,7 @@ function DraftBoard() {
         setBusy(false);
       }
     },
-    [draft, busy, complete, onTheClock, pick, refresh, highlight],
+    [draft, busy, complete, onTheClock, pick, refresh, highlight, playerMedia],
   );
 
   const exportCsv = () => {
