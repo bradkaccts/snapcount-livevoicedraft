@@ -138,6 +138,14 @@ export function useDraftRoom(code: string) {
     },
   });
 
+  // A completed refresh rewrites ranks and stat lines, so pull the board's
+  // player data again once a newer sync timestamp comes back.
+  useEffect(() => {
+    if (!lastSyncedAt) return;
+    void queryClient.invalidateQueries({ queryKey: ["players"] });
+    void queryClient.invalidateQueries({ queryKey: ["picked-players"] });
+  }, [lastSyncedAt, queryClient]);
+
   useEffect(() => {
     if (!draftId) return;
     const channel = supabase
