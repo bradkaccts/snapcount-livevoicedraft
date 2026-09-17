@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { syncPlayers } from "@/lib/players.functions";
+
+const POOL_STALE_MS = 5 * 60 * 1000;
 
 export type Player = {
   id: string;
@@ -89,9 +93,21 @@ export function useDraftRoom(code: string) {
     },
   });
 
+  // Keep the live Sleeper feed flowing into open draft rooms: this is cached
+  // server-side for 24h, so it only does real work when the feed is stale.
+  const runSync = useServerFn(syncPlayers);
+  const poolSyncQuery = useQuery({
+    queryKey: ["player-pool-sync"],
+    staleTime: 30 * 60 * 1000,
+    retry: false,
+    queryFn: () => runSync({ data: { force: false } }),
+  });
+  const lastSyncedAt = poolSyncQuery.data?.lastSyncedAt ?? null;
+
   const playersQuery = useQuery({
     queryKey: ["players"],
-    staleTime: Infinity,
+    staleTime: POOL_STALE_MS,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("players")
@@ -111,7 +127,7 @@ export function useDraftRoom(code: string) {
   const pickedPlayersQuery = useQuery({
     queryKey: ["picked-players", pickedIds],
     enabled: pickedIds.length > 0,
-    staleTime: Infinity,
+    staleTime: POOL_STALE_MS,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("players")
@@ -121,6 +137,14 @@ export function useDraftRoom(code: string) {
       return (data ?? []) as Player[];
     },
   });
+
+  // A completed refresh rewrites ranks and stat lines, so pull the board's
+  // player data again once a newer sync timestamp comes back.
+  useEffect(() => {
+    if (!lastSyncedAt) return;
+    void queryClient.invalidateQueries({ queryKey: ["players"] });
+    void queryClient.invalidateQueries({ queryKey: ["picked-players"] });
+  }, [lastSyncedAt, queryClient]);
 
   useEffect(() => {
     if (!draftId) return;

@@ -116,7 +116,9 @@ function SetupPage() {
     try {
       const status = await sync({ data: { force: true } });
       queryClient.setQueryData(["player-pool"], status);
+      queryClient.setQueryData(["player-pool-sync"], status);
       void queryClient.invalidateQueries({ queryKey: ["players"] });
+      void queryClient.invalidateQueries({ queryKey: ["picked-players"] });
       toast.success(
         status.source === "sleeper"
           ? `Player list updated — ${status.playerCount} players`
