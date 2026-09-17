@@ -171,6 +171,7 @@ function BigBoard() {
       <AnimatePresence>
         {spotlight && (
           <PickCelebration
+            key="pick-celebration"
             spotlight={spotlight}
             onClose={() => setSpotlight(null)}
             onMediaError={(field) =>
@@ -180,7 +181,9 @@ function BigBoard() {
             }
           />
         )}
-        {clockAnnounce && <OnTheClockOverlay announce={clockAnnounce} />}
+        {clockAnnounce && (
+          <OnTheClockOverlay key={`on-the-clock-${clockAnnounce.overall}`} announce={clockAnnounce} />
+        )}
       </AnimatePresence>
     </main>
   );
