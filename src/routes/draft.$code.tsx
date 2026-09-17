@@ -396,23 +396,31 @@ function DraftBoard() {
             ) : (
               <span />
             )}
-            <Button
-              variant="secondary"
-              size="sm"
-              className="shrink-0"
-              onClick={toggleDensity}
-              aria-pressed={compact}
-            >
-              {compact ? "Comfortable" : "Compact"}
-            </Button>
+            <div className="flex shrink-0 items-center gap-2">
+              {overflowing && (
+                <span className="hidden text-[11px] uppercase tracking-wide text-muted-foreground sm:inline">
+                  Scroll sideways for more teams →
+                </span>
+              )}
+              <Button
+                variant="secondary"
+                size="sm"
+                className="shrink-0"
+                onClick={toggleDensity}
+                aria-pressed={compact}
+              >
+                {compact ? "Comfortable" : "Compact"}
+              </Button>
+            </div>
           </div>
           <div
-            className="grid gap-2"
+            className="grid w-max min-w-full gap-2"
             style={{
               gridTemplateColumns: `repeat(${teams.length}, minmax(${colMin}px, 1fr))`,
               gap: compact ? "0.25rem" : "0.375rem",
             }}
           >
+
             {teams.map((team) => (
               <div key={team.id} className="min-w-0">
                 <div
