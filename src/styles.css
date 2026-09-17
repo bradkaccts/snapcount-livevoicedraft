@@ -298,15 +298,37 @@
   }
 }
 
+/* Position tally: a fluid strip that scales with the space its header gives it. */
+.pos-tally {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.15rem, 0.9cqi, 0.4rem);
+  container-type: inline-size;
+  flex-wrap: wrap;
+}
+
+@container (max-width: 300px) {
+  .pos-tally .tally-label {
+    display: none;
+  }
+}
+
+@container (max-width: 200px) {
+  .pos-tally .tally-total {
+    display: none;
+  }
+}
+
 @utility pos-chip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 0.25rem;
   font-weight: 700;
-  font-size: 0.68rem;
+  font-size: clamp(0.55rem, 3.2cqi, 0.85rem);
   letter-spacing: 0.06em;
-  padding: 0.1rem 0.4rem;
+  padding: 0.1rem clamp(0.25rem, 1.1cqi, 0.5rem);
+  white-space: nowrap;
 }
 
 @keyframes clock-expired-pulse {
