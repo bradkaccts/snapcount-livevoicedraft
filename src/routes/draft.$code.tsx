@@ -51,6 +51,103 @@ export const Route = createFileRoute("/draft/$code")({
   component: DraftBoard,
 });
 
+// Seeded RNG so a given pick always replays the same firework show.
+function hashSeed(key: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function mulberry32(seed: number): () => number {
+  let a = seed;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+type FireworkBurst = {
+  side: "left" | "right";
+  originX: number;
+  originY: number;
+  delay: number;
+  duration: number;
+  type: "peony" | "ring" | "willow" | "spokes";
+  sparkCount: number;
+  colors: string[];
+};
+
+function buildFireworkPlan(seedKey: string, teamColor: string): FireworkBurst[] {
+  const rand = mulberry32(hashSeed(seedKey));
+  const types: FireworkBurst["type"][] = ["peony", "ring", "willow", "spokes"];
+  const bursts: FireworkBurst[] = [];
+  for (const side of ["left", "right"] as const) {
+    const count = 2 + Math.floor(rand() * 3); // 2–4 bursts per side
+    let t = 0.25 + rand() * 0.5;
+    for (let b = 0; b < count; b++) {
+      // Color story: team-only, gold, silver, or a mixed/random palette.
+      const roll = rand();
+      const hue = Math.floor(rand() * 360);
+      const colors =
+        roll < 0.35
+          ? [teamColor, "#ffffff"]
+          : roll < 0.55
+            ? ["#d4af37", "#fff3c4"]
+            : roll < 0.75
+              ? ["#e8ecf1", teamColor, "#d4af37"]
+              : [`hsl(${hue} 95% 62%)`, `hsl(${(hue + 60) % 360} 95% 68%)`, "#ffffff"];
+      bursts.push({
+        side,
+        originX:
+          side === "left"
+            ? 5 + rand() * 20
+            : 95 - rand() * 20,
+        originY: 78 + rand() * 16,
+        delay: t,
+        duration: 0.95 + rand() * 0.5,
+        type: types[Math.floor(rand() * types.length)],
+        sparkCount: 12 + Math.floor(rand() * 12),
+        colors,
+      });
+      t += 0.7 + rand() * 0.9;
+    }
+  }
+  return bursts;
+}
+
+// Spark offsets per burst type: peony = varied-radius sphere, ring = even
+// circle, willow = drooping trails, spokes = a few long straight rays.
+function sparkOffset(
+  type: FireworkBurst["type"],
+  spark: number,
+  count: number,
+  rand: () => number,
+): { x: number; y: number } {
+  const angle = (spark / count) * Math.PI * 2 + rand() * 0.3;
+  if (type === "ring") {
+    const d = 105;
+    return { x: Math.cos(angle) * d, y: Math.sin(angle) * d };
+  }
+  if (type === "willow") {
+    const d = 55 + rand() * 70;
+    return { x: Math.cos(angle) * d * 0.9, y: Math.abs(Math.sin(angle)) * d * 0.45 + d * 0.55 };
+  }
+  if (type === "spokes") {
+    const spokes = 6;
+    const spokeAngle = ((spark % spokes) / spokes) * Math.PI * 2;
+    const d = 80 + rand() * 60;
+    return { x: Math.cos(spokeAngle) * d, y: Math.sin(spokeAngle) * d * 0.9 };
+  }
+  const d = 65 + rand() * 65;
+  return { x: Math.cos(angle) * d, y: Math.sin(angle) * d * 0.85 };
+}
+
 function DraftBoard() {
   const { code } = Route.useParams();
   const { draft, teams, picks, players, isLoading, notFound, refresh } =
