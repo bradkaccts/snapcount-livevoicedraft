@@ -76,6 +76,36 @@ function DraftBoard() {
     });
   }, []);
 
+  // Measure the board area so team columns shrink to fit instead of clipping.
+  const boardRef = useRef<HTMLElement | null>(null);
+  const [boardWidth, setBoardWidth] = useState(0);
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? 0;
+      setBoardWidth((prev) => (Math.abs(prev - w) > 1 ? w : prev));
+    });
+    ro.observe(el);
+    setBoardWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, [isLoading, notFound]);
+
+  const teamCount = teams.length || 1;
+  // Absolute floor per column; below this the board scrolls horizontally.
+  const colFloor = compact ? 68 : 84;
+  // Space eaten by padding (p-4 => 32px) and the gaps between columns.
+  const gapPx = compact ? 4 : 6;
+  const usable = boardWidth > 0 ? boardWidth - 32 - gapPx * (teamCount - 1) : 0;
+  const fluidCol = usable > 0 ? Math.floor(usable / teamCount) : 0;
+  // Use the fluid width when it fits, but never below the legacy minimums;
+  // on very narrow screens the board keeps its floor and scrolls instead.
+  const legacyMin =
+    (teamCount <= 10 ? 140 : teamCount <= 12 ? 104 : teamCount <= 14 ? 96 : 88) -
+    (compact ? 16 : 0);
+  const colMin = Math.max(colFloor, Math.min(legacyMin, fluidCol || legacyMin));
+  const narrow = fluidCol > 0 && fluidCol < 96;
+
   const [paused, setPaused] = useState(false);
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
