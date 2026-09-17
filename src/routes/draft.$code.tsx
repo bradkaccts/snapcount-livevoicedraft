@@ -93,7 +93,7 @@ function DraftBoard() {
 
   const teamCount = teams.length || 1;
   // Absolute floor per column; below this the board scrolls horizontally.
-  const colFloor = compact ? 68 : 84;
+  const colFloor = compact ? 48 : 60;
   // Space eaten by padding (p-4 => 32px) and the gaps between columns.
   const gapPx = compact ? 4 : 6;
   const usable = boardWidth > 0 ? boardWidth - 32 - gapPx * (teamCount - 1) : 0;
