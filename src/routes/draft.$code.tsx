@@ -406,27 +406,24 @@ function DraftBoard() {
           <div
             className="grid gap-2"
             style={{
-              gridTemplateColumns: `repeat(${teams.length}, minmax(${
-                (teams.length <= 10 ? 140 : teams.length <= 12 ? 104 : teams.length <= 14 ? 96 : 88) -
-                (compact ? 16 : 0)
-              }px, 1fr))`,
+              gridTemplateColumns: `repeat(${teams.length}, minmax(${colMin}px, 1fr))`,
               gap: compact ? "0.25rem" : "0.375rem",
             }}
           >
             {teams.map((team) => (
               <div key={team.id} className="min-w-0">
                 <div
-                  className={`sticky top-0 z-10 rounded-t-md border-b-4 bg-surface px-2 ${compact ? "py-1" : "py-2"}`}
+                  className={`sticky top-0 z-10 rounded-t-md border-b-4 bg-surface ${narrow ? "px-1" : "px-2"} ${compact || narrow ? "py-1" : "py-2"}`}
                   style={{ borderColor: team.color }}
                 >
                   <p
                     className={`truncate font-display leading-tight ${
-                      compact || teams.length > 12 ? "text-base" : "text-lg"
+                      compact || narrow || teams.length > 12 ? "text-base" : "text-lg"
                     }`}
                   >
                     {team.name}
                   </p>
-                  {!compact && (
+                  {!compact && !narrow && (
                     <p className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">
                       {team.manager || `Slot ${team.slot}`}
                     </p>
