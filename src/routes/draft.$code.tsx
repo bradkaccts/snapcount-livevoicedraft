@@ -1,37 +1,31 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AnimatePresence } from "motion/react";
 import {
   ArrowLeft,
   Clock,
   Download,
-  ExternalLink,
+  MonitorPlay,
   Pause,
   Play,
   RotateCcw,
-  Sparkles,
-  Timer,
   Trophy,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { BoardGrid } from "@/components/draft/BoardGrid";
+import { PickCelebration } from "@/components/draft/PickCelebration";
+import { OnTheClockOverlay } from "@/components/draft/OnTheClockOverlay";
+import { PicksTicker } from "@/components/draft/PicksTicker";
 import { PlayerList } from "@/components/draft/PlayerList";
 import { VoicePick } from "@/components/draft/VoicePick";
 import { makePick, undoLastPick } from "@/lib/draft.functions";
-import { findPlayerHighlight, type HighlightResult } from "@/lib/highlights.functions";
-import { findPlayerMedia, type PlayerMedia } from "@/lib/player-media.functions";
-import { lighten, readableOn, teamPalette } from "@/lib/nfl-teams";
-import {
-  POSITION_CLASS,
-  formatClock,
-  picksToCsv,
-  slotForOverall,
-} from "@/lib/draft-utils";
+import { formatClock, picksToCsv, slotForOverall } from "@/lib/draft-utils";
 import { useDraftRoom, type Player } from "@/lib/useDraftRoom";
-import { useMotionBudget, type MotionBudget } from "@/lib/useMotionBudget";
+import { useDraftPresentation } from "@/lib/useDraftPresentation";
+import { useBigBoardOpen } from "@/lib/useBigBoardPresence";
 
 export const Route = createFileRoute("/draft/$code")({
   head: () => ({
@@ -52,200 +46,18 @@ export const Route = createFileRoute("/draft/$code")({
   component: DraftBoard,
 });
 
-// Seeded RNG so a given pick always replays the same firework show.
-function hashSeed(key: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < key.length; i++) {
-    h ^= key.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-function mulberry32(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-type FireworkBurst = {
-  side: "left" | "right";
-  originX: number;
-  originY: number;
-  delay: number;
-  duration: number;
-  type: "peony" | "ring" | "willow" | "spokes";
-  sparkCount: number;
-  colors: string[];
-};
-
-function buildFireworkPlan(
-  seedKey: string,
-  teamColor: string,
-  budget: MotionBudget = "full",
-): FireworkBurst[] {
-  if (budget === "none") return [];
-  const lite = budget === "lite";
-  const rand = mulberry32(hashSeed(seedKey));
-  const types: FireworkBurst["type"][] = ["peony", "ring", "willow", "spokes"];
-  const bursts: FireworkBurst[] = [];
-  for (const side of ["left", "right"] as const) {
-    // 2–4 bursts per side on capable devices, 1–2 on lighter hardware.
-    const count = lite ? 1 + Math.floor(rand() * 2) : 2 + Math.floor(rand() * 3);
-    let t = 0.25 + rand() * 0.5;
-    for (let b = 0; b < count; b++) {
-      // Color story: team-only, gold, silver, or a mixed/random palette.
-      const roll = rand();
-      const hue = Math.floor(rand() * 360);
-      const colors =
-        roll < 0.35
-          ? [teamColor, "#ffffff"]
-          : roll < 0.55
-            ? ["#d4af37", "#fff3c4"]
-            : roll < 0.75
-              ? ["#e8ecf1", teamColor, "#d4af37"]
-              : [`hsl(${hue} 95% 62%)`, `hsl(${(hue + 60) % 360} 95% 68%)`, "#ffffff"];
-      bursts.push({
-        side,
-        originX:
-          side === "left"
-            ? 5 + rand() * 20
-            : 95 - rand() * 20,
-        originY: 78 + rand() * 16,
-        delay: t,
-        duration: 0.95 + rand() * 0.5,
-        type: types[Math.floor(rand() * types.length)] ?? "peony",
-        sparkCount: lite ? 8 + Math.floor(rand() * 5) : 12 + Math.floor(rand() * 12),
-        colors,
-      });
-      t += 0.7 + rand() * 0.9;
-    }
-  }
-  return bursts;
-}
-
-// Spark offsets per burst type: peony = varied-radius sphere, ring = even
-// circle, willow = drooping trails, spokes = a few long straight rays.
-function sparkOffset(
-  type: FireworkBurst["type"],
-  spark: number,
-  count: number,
-  rand: () => number,
-): { x: number; y: number } {
-  const angle = (spark / count) * Math.PI * 2 + rand() * 0.3;
-  if (type === "ring") {
-    const d = 105;
-    return { x: Math.cos(angle) * d, y: Math.sin(angle) * d };
-  }
-  if (type === "willow") {
-    const d = 55 + rand() * 70;
-    return { x: Math.cos(angle) * d * 0.9, y: Math.abs(Math.sin(angle)) * d * 0.45 + d * 0.55 };
-  }
-  if (type === "spokes") {
-    const spokes = 6;
-    const spokeAngle = ((spark % spokes) / spokes) * Math.PI * 2;
-    const d = 80 + rand() * 60;
-    return { x: Math.cos(spokeAngle) * d, y: Math.sin(spokeAngle) * d * 0.9 };
-  }
-  const d = 65 + rand() * 65;
-  return { x: Math.cos(angle) * d, y: Math.sin(angle) * d * 0.85 };
-}
-
 function DraftBoard() {
   const { code } = Route.useParams();
-  const { draft, teams, picks, players, isLoading, notFound, refresh } =
-    useDraftRoom(code);
+  const { draft, teams, picks, players, isLoading, notFound, refresh } = useDraftRoom(code);
   const pick = useServerFn(makePick);
   const undo = useServerFn(undoLastPick);
-  const highlight = useServerFn(findPlayerHighlight);
-  const playerMedia = useServerFn(findPlayerMedia);
-
-  
-  const [compact, setCompact] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setCompact(window.localStorage.getItem("draft-board-density") === "compact");
-  }, []);
-  const toggleDensity = useCallback(() => {
-    setCompact((prev) => {
-      const next = !prev;
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("draft-board-density", next ? "compact" : "comfortable");
-      }
-      return next;
-    });
-  }, []);
-
-  // Measure the board area so team columns shrink to fit instead of clipping.
-  const boardRef = useRef<HTMLElement | null>(null);
-  const [boardWidth, setBoardWidth] = useState(0);
-  useEffect(() => {
-    const el = boardRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width ?? 0;
-      setBoardWidth((prev) => (Math.abs(prev - w) > 1 ? w : prev));
-    });
-    ro.observe(el);
-    setBoardWidth(el.clientWidth);
-    return () => ro.disconnect();
-  }, [isLoading, notFound]);
-
-  const teamCount = teams.length || 1;
-  // Absolute floor per column; below this the board scrolls horizontally
-  // rather than squeezing a column until it is unreadable or clipped.
-  const colFloor = compact ? 76 : 92;
-  // Space eaten by padding (p-4 => 32px) and the gaps between columns.
-  const gapPx = compact ? 4 : 6;
-  const usable = boardWidth > 0 ? boardWidth - 32 - gapPx * (teamCount - 1) : 0;
-  const fluidCol = usable > 0 ? Math.floor(usable / teamCount) : 0;
-  // Use the fluid width when it fits, but never below the legacy minimums;
-  // on very narrow screens the board keeps its floor and scrolls instead.
-  const legacyMin =
-    (teamCount <= 10 ? 140 : teamCount <= 12 ? 104 : teamCount <= 14 ? 96 : 88) -
-    (compact ? 16 : 0);
-  const colMin = Math.max(colFloor, Math.min(legacyMin, fluidCol || legacyMin));
-  const narrow = fluidCol > 0 && fluidCol < 96;
-  const overflowing = usable > 0 && fluidCol < colFloor;
-
+  const bigBoardOpen = useBigBoardOpen(code);
 
   const [paused, setPaused] = useState(false);
   const [remaining, setRemaining] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [spotlight, setSpotlight] = useState<
-    {
-      player: Player;
-      teamName: string;
-      highlight: HighlightResult | null;
-      media: PlayerMedia | null;
-      overall: number;
-      round: number;
-      pickInRound: number;
-    } | null
-  >(null);
-  const [clockAnnounce, setClockAnnounce] = useState<
-    {
-      teamId: string;
-      teamName: string;
-      manager: string | null;
-      color: string;
-      round: number;
-      pickInRound: number;
-      overall: number;
-    } | null
-  >(null);
 
-  const spotlightPalette = teamPalette(spotlight?.player.nfl_team);
-
-  const playersById = useMemo(
-    () => new Map(players.map((p) => [p.id, p])),
-    [players],
-  );
+  const playersById = useMemo(() => new Map(players.map((p) => [p.id, p])), [players]);
   const draftedIds = useMemo(() => new Set(picks.map((p) => p.player_id)), [picks]);
   const available = useMemo(
     () => players.filter((p) => !draftedIds.has(p.id)),
@@ -253,87 +65,43 @@ function DraftBoard() {
   );
 
   const complete = draft?.status === "complete";
-  const current = draft && !complete
-    ? slotForOverall(draft.current_overall, draft.team_count, draft.order_type)
-    : null;
-  const onTheClock = current
-    ? teams.find((t) => t.slot === current.slot) ?? null
-    : null;
+  const current =
+    draft && !complete
+      ? slotForOverall(draft.current_overall, draft.team_count, draft.order_type)
+      : null;
+  const onTheClock = current ? teams.find((t) => t.slot === current.slot) ?? null : null;
   const nextUp =
     draft && current && draft.current_overall < draft.team_count * draft.rounds
       ? teams.find(
           (t) =>
             t.slot ===
-            slotForOverall(draft.current_overall + 1, draft.team_count, draft.order_type)
-              .slot,
+            slotForOverall(draft.current_overall + 1, draft.team_count, draft.order_type).slot,
         ) ?? null
       : null;
 
-  // The clock holds at its last value while the celebration or the
-  // "Now on the Clock" announcement is on screen, then resets to the full
-  // clock and starts counting the moment the announcement closes.
+  const { spotlight, setSpotlight, clockAnnounce, clearForUndo, presenting } =
+    useDraftPresentation({
+      draft,
+      teams,
+      picks,
+      playersById,
+      complete: Boolean(complete),
+      current,
+      onTheClock,
+    });
+
+  // The clock holds while the broadcast overlays run — even when they are
+  // playing on the big board window instead of here.
   useEffect(() => {
-    if (!draft || spotlight || clockAnnounce) return;
+    if (!draft || presenting) return;
     setRemaining(draft.clock_seconds);
-  }, [draft?.current_overall, draft?.clock_seconds, draft, spotlight, clockAnnounce]);
+  }, [draft?.current_overall, draft?.clock_seconds, draft, presenting]);
 
   useEffect(() => {
-    if (paused || complete || spotlight || clockAnnounce || !draft) return;
+    if (paused || complete || presenting || !draft) return;
     const id = setInterval(() => setRemaining((r) => (r > 0 ? r - 1 : 0)), 1000);
     return () => clearInterval(id);
-  }, [paused, complete, draft, draft?.current_overall, spotlight, clockAnnounce]);
-
-  // Let the celebration play out (~4s), hold for 3s, then return to the board.
-  const spotlightKey = spotlight ? `${spotlight.overall}-${spotlight.player.id}` : null;
-
-  // Seeded per-pick firework plan so every celebration looks a little different.
-  const motionBudget = useMotionBudget();
-  const fireworkPlan = useMemo(
-    () =>
-      spotlightKey
-        ? buildFireworkPlan(spotlightKey, spotlightPalette.primary, motionBudget)
-        : [],
-    [spotlightKey, spotlightPalette.primary, motionBudget],
-  );
-  // Confetti volume scales with the device budget so mid-range hardware keeps 60fps.
-  const confettiCount = motionBudget === "full" ? 72 : motionBudget === "lite" ? 32 : 0;
-  useEffect(() => {
-    if (!spotlightKey) return;
-    const timer = setTimeout(() => setSpotlight(null), 7000);
-    return () => clearTimeout(timer);
-  }, [spotlightKey]);
-
-  // The moment the celebration closes, hand the mic to the next drafter:
-  // an automatic "Now on the Clock" announcement, then the countdown begins.
-  const celebrationWasOpen = useRef(false);
-  const skipNextAnnounce = useRef(false);
-  useEffect(() => {
-    const wasOpen = celebrationWasOpen.current;
-    celebrationWasOpen.current = Boolean(spotlight);
-    if (!wasOpen || spotlight || complete || !draft) return;
-    if (skipNextAnnounce.current) {
-      skipNextAnnounce.current = false;
-      return;
-    }
-    if (!onTheClock || !current) return;
-    setClockAnnounce({
-      teamId: onTheClock.id,
-      teamName: onTheClock.name,
-      manager: onTheClock.manager,
-      color: onTheClock.color,
-      round: current.round,
-      pickInRound: current.pickInRound,
-      overall: draft.current_overall,
-    });
-  }, [spotlight, draft, complete, onTheClock, current]);
-
-  // The announcement runs its entrance (~1.2s), holds, then clears itself.
-  const announceKey = clockAnnounce ? `${clockAnnounce.overall}-${clockAnnounce.teamId}` : null;
-  useEffect(() => {
-    if (!announceKey) return;
-    const timer = setTimeout(() => setClockAnnounce(null), 4500);
-    return () => clearTimeout(timer);
-  }, [announceKey]);
+  }, [paused, complete, draft, draft?.current_overall, presenting]);
 
   const submitPick = useCallback(
     async (player: Player) => {
@@ -343,43 +111,14 @@ function DraftBoard() {
       try {
         await pick({ data: { draftId: draft.id, playerId: player.id } });
         refresh();
-        
-        const selection = slotForOverall(
-          draft.current_overall,
-          draft.team_count,
-          draft.order_type,
-        );
-        setSpotlight({
-          player,
-          teamName,
-          highlight: null,
-          media: null,
-          overall: draft.current_overall,
-          round: selection.round,
-          pickInRound: selection.pickInRound,
-        });
         toast.success(`${teamName} selects ${player.name}`);
-        void highlight({ data: { playerId: player.id } })
-          .then((result) =>
-            setSpotlight((prev) =>
-              prev && prev.player.id === player.id ? { ...prev, highlight: result } : prev,
-            ),
-          )
-          .catch(() => undefined);
-        void playerMedia({ data: { playerId: player.id } })
-          .then((media) =>
-            setSpotlight((prev) =>
-              prev && prev.player.id === player.id ? { ...prev, media } : prev,
-            ),
-          )
-          .catch(() => undefined);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "That pick didn't go through");
       } finally {
         setBusy(false);
       }
     },
-    [draft, busy, complete, onTheClock, pick, refresh, highlight, playerMedia],
+    [draft, busy, complete, onTheClock, pick, refresh],
   );
 
   const exportCsv = () => {
@@ -470,7 +209,12 @@ function DraftBoard() {
                 <Clock className="h-6 w-6" />
                 {formatClock(remaining)}
               </div>
-              <Button variant="secondary" size="icon" onClick={() => setPaused((p) => !p)} aria-label={paused ? "Resume clock" : "Pause clock"}>
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={() => setPaused((p) => !p)}
+                aria-label={paused ? "Resume clock" : "Pause clock"}
+              >
                 {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
               </Button>
             </>
@@ -483,9 +227,7 @@ function DraftBoard() {
             onClick={async () => {
               await undo({ data: { draftId: draft.id } });
               refresh();
-              skipNextAnnounce.current = true;
-              setSpotlight(null);
-              setClockAnnounce(null);
+              clearForUndo();
               toast.success("Last pick undone");
             }}
           >
@@ -493,6 +235,12 @@ function DraftBoard() {
           </Button>
           <Button variant="secondary" size="icon" onClick={exportCsv} aria-label="Export results">
             <Download className="h-4 w-4" />
+          </Button>
+          <Button asChild variant={bigBoardOpen ? "default" : "secondary"}>
+            <a href={`/board/${code}`} target="_blank" rel="noreferrer">
+              <MonitorPlay className="h-4 w-4" />
+              {bigBoardOpen ? "Big board live" : "Open big board"}
+            </a>
           </Button>
           <Button asChild variant="secondary">
             <Link to="/history/$code" params={{ code }}>History</Link>
@@ -504,7 +252,7 @@ function DraftBoard() {
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
-        <section ref={boardRef} className="board-scroll relative min-h-0 flex-1 overflow-auto scrollbar-thin p-4">
+        <section className="flex min-h-0 flex-1 flex-col p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             {nextUp && !complete ? (
               <p className="min-w-0 truncate text-sm text-muted-foreground">
@@ -513,111 +261,29 @@ function DraftBoard() {
             ) : (
               <span />
             )}
-            <div className="flex shrink-0 items-center gap-2">
-              {overflowing && (
-                <span className="hidden text-[11px] uppercase tracking-wide text-muted-foreground sm:inline">
-                  Scroll sideways for more teams →
-                </span>
-              )}
-              <Button
-                variant="secondary"
-                size="sm"
-                className="shrink-0"
-                onClick={toggleDensity}
-                aria-pressed={compact}
-              >
-                {compact ? "Comfortable" : "Compact"}
-              </Button>
-            </div>
+            {bigBoardOpen && (
+              <span className="shrink-0 text-[11px] uppercase tracking-wide text-muted-foreground">
+                Celebrations playing on the big board
+              </span>
+            )}
           </div>
-          <div
-            className="grid w-full gap-2"
-            style={{
-              gridTemplateColumns: `repeat(${teams.length}, minmax(${colMin}px, 1fr))`,
-              // Only force extra width (and horizontal scrolling) when the
-              // columns can't fit at their minimum size.
-              minWidth: `${teams.length * colMin + gapPx * (teams.length - 1)}px`,
-              gap: compact ? "0.25rem" : "0.375rem",
-            }}
-          >
 
-            {teams.map((team) => (
-              <div key={team.id} className="min-w-0">
-                <div
-                  className={`sticky top-0 z-10 rounded-t-md border-b-4 bg-surface ${narrow ? "px-1" : "px-2"} ${compact || narrow ? "py-1" : "py-2"}`}
-                  style={{ borderColor: team.color }}
-                >
-                  <p
-                    className={`truncate font-display leading-tight ${
-                      compact || narrow || teams.length > 12 ? "text-base" : "text-lg"
-                    }`}
-                  >
-                    {team.name}
-                  </p>
-                  {!compact && !narrow && (
-                    <p className="truncate text-[11px] uppercase tracking-wide text-muted-foreground">
-                      {team.manager || `Slot ${team.slot}`}
-                    </p>
-                  )}
-                </div>
-                <ul className="mt-1 space-y-1">
-                  {Array.from({ length: draft.rounds }, (_, r) => {
-                    const round = r + 1;
-                    const entry = picks.find(
-                      (p) => p.team_id === team.id && p.round === round,
-                    );
-                    const player = entry ? playersById.get(entry.player_id) : undefined;
-                    const isCurrent =
-                      !complete &&
-                      current?.round === round &&
-                      onTheClock?.id === team.id;
-                    return (
-                      <li
-                        key={round}
-                        className={`rounded-md ${narrow ? "px-1" : "px-2"} ${compact ? "py-1 text-xs" : "py-1.5 text-sm"} ${
-                          player
-                            ? "bg-surface"
-                            : isCurrent
-                              ? "animate-pulse bg-primary/15 ring-1 ring-primary"
-                              : "bg-surface-2/50"
-                        }`}
-                      >
-                        {player ? (
-                          <>
-                            <span className="flex min-w-0 items-center gap-1.5">
-                              <span className={`pos-chip shrink-0 ${POSITION_CLASS[player.position] ?? ""}`}>
-                                {player.position}
-                              </span>
-                              <span className="truncate font-semibold">{player.name}</span>
-                            </span>
-                            {!compact && !narrow && (
-                              <span className="text-[11px] text-muted-foreground">
-                                {player.nfl_team} · {round}.
-                                {String(entry?.pick_in_round ?? 0).padStart(2, "0")}
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-[11px] uppercase tracking-widest text-muted-foreground">
-                            Rd {round}
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-          </div>
+          <BoardGrid
+            teams={teams}
+            picks={picks}
+            playersById={playersById}
+            rounds={draft.rounds}
+            currentRound={current?.round ?? null}
+            onTheClockId={onTheClock?.id ?? null}
+            complete={Boolean(complete)}
+            variant="window"
+            windowSize={5}
+          />
         </section>
 
         <aside className="flex min-h-0 w-full shrink-0 flex-col border-t border-border bg-surface xl:w-[400px] xl:border-l xl:border-t-0">
           <div className="min-h-0 flex-1">
-            <PlayerList
-              players={available}
-              onDraft={submitPick}
-              disabled={busy || complete}
-            />
+            <PlayerList players={available} onDraft={submitPick} disabled={busy || complete} />
           </div>
           {!complete && (
             <VoicePick
@@ -630,447 +296,21 @@ function DraftBoard() {
         </aside>
       </div>
 
-      {picks.length > 0 && (
-        <footer className="shrink-0 border-t border-border bg-surface" aria-label="Previous picks">
-          <div className="flex items-stretch">
-            <span className="flex shrink-0 items-center gap-1.5 border-r border-border bg-surface-2 px-3 py-1.5 font-display text-xs uppercase tracking-widest text-clock">
-              <Timer className="h-3.5 w-3.5" /> Latest picks
-            </span>
-            <div className="relative min-w-0 flex-1 overflow-hidden">
-              <div className="ticker-track flex w-max items-center gap-8 py-1.5 pr-8">
-                {[0, 1].map((copy) => (
-                  <div key={copy} className="flex items-center gap-8" aria-hidden={copy === 1}>
-                    {[...picks].sort((a, b) => b.overall - a.overall).map((p) => {
-                      const player = playersById.get(p.player_id);
-                      const team = teams.find((t) => t.id === p.team_id);
-                      if (!player) return null;
-                      return (
-                        <span key={`${copy}-${p.id}`} className="flex items-center gap-2 whitespace-nowrap text-sm">
-                          <span className="font-display text-muted-foreground tabular-nums">
-                            {p.round}.{String(p.pick_in_round).padStart(2, "0")}
-                          </span>
-                          <span className={`pos-chip ${POSITION_CLASS[player.position] ?? ""}`}>
-                            {player.position}
-                          </span>
-                          <span className="font-semibold">{player.name}</span>
-                          <span className="text-muted-foreground">{player.nfl_team}</span>
-                          <span
-                            className="font-display uppercase tracking-wide"
-                            style={{ color: team?.color }}
-                          >
-                            → {team?.name ?? ""}
-                          </span>
-                        </span>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </footer>
-      )}
+      <PicksTicker picks={picks} teams={teams} playersById={playersById} />
 
       <AnimatePresence>
-        {spotlight && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-background/95 px-5 py-8 backdrop-blur-md"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${spotlight.player.name} selected by ${spotlight.teamName}`}
-            style={
-              {
-                "--celebration": spotlightPalette.primary,
-                "--celebration-foreground": readableOn(spotlightPalette.primary),
-                "--celebration-soft": lighten(spotlightPalette.primary, 0.35),
-              } as Record<string, string>
+        {spotlight && !bigBoardOpen && (
+          <PickCelebration
+            spotlight={spotlight}
+            onClose={() => setSpotlight(null)}
+            onMediaError={(field) =>
+              setSpotlight((prev) =>
+                prev ? { ...prev, media: { ...prev.media!, [field]: null } } : prev,
+              )
             }
-          >
-            {spotlight.media?.actionUrl && (
-              <motion.img
-                key={spotlight.media.actionUrl}
-                src={spotlight.media.actionUrl}
-                alt={`${spotlight.player.name} in action`}
-                initial={{ opacity: 0, scale: 1.18 }}
-                animate={{ opacity: 0.4, scale: 1 }}
-                transition={{ duration: 6, ease: "easeOut" }}
-                onError={() =>
-                  setSpotlight((prev) =>
-                    prev ? { ...prev, media: { ...prev.media!, actionUrl: null } } : prev,
-                  )
-                }
-                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-              />
-            )}
-
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background: `radial-gradient(120% 90% at 50% 45%, rgba(6,8,12,0.35) 5%, ${spotlightPalette.secondary}55 55%, rgba(6,8,12,0.94) 100%)`,
-              }}
-            />
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 0.7, 0.2] }}
-              transition={{ duration: 1.4, times: [0, 0.25, 1] }}
-              className="pointer-events-none absolute inset-0 bg-celebration mix-blend-overlay"
-            />
-
-
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-25">
-              <motion.div
-                initial={{ rotate: -30, x: "-85%" }}
-                animate={{ rotate: 35, x: "85%" }}
-                transition={{ duration: 1.2, ease: "easeOut" }}
-                className="h-28 w-[160vw] bg-celebration blur-3xl"
-              />
-            </div>
-
-            <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-              {fireworkPlan.map((burst, burstIndex) => {
-                const sparkRand = mulberry32(hashSeed(`${spotlightKey}-${burstIndex}`));
-                return (
-                  <div
-                    key={`${burst.side}-${burstIndex}`}
-                    className="absolute"
-                    style={{ left: `${burst.originX}%`, top: `${burst.originY}%` }}
-                  >
-                    <motion.span
-                      initial={{ scale: 0, opacity: 0.9 }}
-                      animate={{ scale: [0, 3.2], opacity: [0.9, 0] }}
-                      transition={{ duration: 0.9, delay: burst.delay, ease: "easeOut" }}
-                      className="absolute -left-10 -top-10 h-20 w-20 rounded-full"
-                      style={{
-                        background: `radial-gradient(circle, #ffffff 0%, ${burst.colors[0]} 35%, transparent 70%)`,
-                      }}
-                    />
-                    {Array.from({ length: burst.sparkCount }, (_, spark) => {
-                      const { x, y } = sparkOffset(burst.type, spark, burst.sparkCount, sparkRand);
-                      const color = burst.colors[spark % burst.colors.length];
-                      return (
-                        <motion.span
-                          key={spark}
-                          initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-                          animate={{
-                            x,
-                            y,
-                            opacity: [1, 1, 0],
-                            scale: [1, 0.6, 0.1],
-                          }}
-                          transition={{
-                            duration: burst.duration,
-                            delay: burst.delay,
-                            ease: "easeOut",
-                          }}
-                          className="firework-spark absolute h-3 w-3 rounded-full"
-                          style={{
-                            background: `radial-gradient(circle, #ffffff 0%, ${color} 38%, transparent 72%)`,
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-              {Array.from({ length: confettiCount }, (_, index) => (
-                <motion.span
-                  key={index}
-                  initial={{
-                    left: `${3 + ((index * 29) % 94)}%`,
-                    top: 0,
-                    y: "-10vh",
-                    rotate: 0,
-                    opacity: 0,
-                  }}
-                  animate={{
-                    y: "110vh",
-                    rotate: index % 2 === 0 ? 540 : -540,
-                    opacity: [0, 1, 1, 0],
-                  }}
-                  transition={{
-                    duration: 2.6 + (index % 5) * 0.3,
-                    delay: 0.35 + (index % 11) * 0.09,
-                    ease: "easeIn",
-                  }}
-                  className={`confetti-piece absolute ${
-                    index % 4 === 3 ? "h-2 w-2 rounded-full" : "h-3 w-1.5"
-                  } ${
-                    index % 3 === 0
-                      ? "confetti-gold"
-                      : index % 3 === 1
-                        ? "confetti-team"
-                        : "confetti-silver"
-                  }`}
-                />
-              ))}
-            </div>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => setSpotlight(null)}
-              aria-label="Dismiss highlight"
-              className="absolute right-5 top-5 z-30 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-
-            <motion.section
-              initial={{ opacity: 0, scale: 0.82 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: "spring", stiffness: 150, damping: 16, delay: 0.18 }}
-              className="relative flex w-full max-w-5xl flex-col items-center justify-center text-center"
-            >
-              <div className="absolute left-0 top-0 h-14 w-14 border-l-4 border-t-4 border-celebration sm:h-20 sm:w-20" />
-              <div className="absolute bottom-0 right-0 h-14 w-14 border-b-4 border-r-4 border-celebration sm:h-20 sm:w-20" />
-
-              <motion.div
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 0.4, delay: 0.55 }}
-                className="mb-4 flex items-center gap-2 bg-celebration px-5 py-2 text-xs font-black uppercase italic tracking-[0.2em] text-celebration-foreground sm:text-sm"
-              >
-                <Sparkles className="h-4 w-4" /> The pick is in
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, scale: 0.5, y: 14 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 260, damping: 18, delay: 0.62 }}
-                className="mb-4 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 shadow-[0_0_40px_var(--celebration)] sm:h-32 sm:w-32"
-                style={{
-                  borderColor: spotlightPalette.primary,
-                  backgroundColor: spotlightPalette.secondary,
-                }}
-              >
-                {spotlight.media?.headshotUrl ? (
-                  <img
-                    src={spotlight.media.headshotUrl}
-                    alt={spotlight.player.name}
-                    className="h-full w-full object-cover"
-                    onError={() =>
-                      setSpotlight((prev) =>
-                        prev
-                          ? { ...prev, media: { ...prev.media!, headshotUrl: null } }
-                          : prev,
-                      )
-                    }
-                  />
-                ) : (
-                  <span
-                    className="font-display text-3xl uppercase sm:text-4xl"
-                    style={{ color: readableOn(spotlightPalette.secondary) }}
-                  >
-                    {spotlight.player.name
-                      .split(" ")
-                      .map((part) => part[0])
-                      .join("")
-                      .slice(0, 3)}
-                  </span>
-                )}
-              </motion.div>
-
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.72 }}
-                className="mb-5 text-xs font-bold uppercase tracking-widest text-muted-foreground sm:text-sm"
-              >
-                Round {spotlight.round} · Pick {spotlight.round}.
-                {String(spotlight.pickInRound).padStart(2, "0")} · #{spotlight.overall} overall
-              </motion.p>
-
-              <motion.h2
-                initial={{ opacity: 0, scale: 1.35, filter: "blur(12px)" }}
-                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                transition={{ duration: 0.65, delay: 0.82, ease: [0.2, 0.8, 0.2, 1] }}
-                className="max-w-full px-4 font-display text-6xl uppercase leading-[0.82] text-foreground drop-shadow-[0_0_30px_var(--celebration)] sm:text-8xl lg:text-[9rem]"
-              >
-                {spotlight.player.name}
-              </motion.h2>
-
-              <motion.div
-                initial={{ opacity: 0, scaleX: 0 }}
-                animate={{ opacity: 1, scaleX: 1 }}
-                transition={{ duration: 0.45, delay: 1.15 }}
-                className="mt-5 flex w-full max-w-xl items-center justify-center gap-4"
-              >
-                <span className="h-0.5 flex-1 bg-celebration" />
-                <span className={`pos-chip ${POSITION_CLASS[spotlight.player.position] ?? ""}`}>
-                  {spotlight.player.position}
-                </span>
-                <span className="text-lg font-bold uppercase text-celebration sm:text-2xl">
-                  {spotlight.player.nfl_team}
-                </span>
-                <span className="h-0.5 flex-1 bg-celebration" />
-              </motion.div>
-
-              {spotlight.player.stat_line && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 1.35 }}
-                  className="mt-4 text-sm text-muted-foreground sm:text-base"
-                >
-                  {spotlight.player.stat_line}
-                </motion.p>
-              )}
-
-              <motion.div
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.5 }}
-                className="mt-8 border-t border-border px-10 pt-6"
-              >
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
-                  Selected by
-                </p>
-                <p className="mt-1 font-display text-3xl uppercase text-foreground sm:text-4xl">
-                  {spotlight.teamName}
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.75 }}
-                className="mt-5 min-h-12 max-w-xl px-4"
-              >
-                {spotlight.highlight ? (
-                  <>
-                    {spotlight.highlight.summary && (
-                      <p className="text-sm text-muted-foreground">{spotlight.highlight.summary}</p>
-                    )}
-                    {spotlight.highlight.url && (
-                      <Button asChild variant="secondary" className="mt-3">
-                        <a href={spotlight.highlight.url} target="_blank" rel="noreferrer">
-                          <ExternalLink className="h-4 w-4" />
-                          {spotlight.highlight.title ?? "Watch highlights"}
-                        </a>
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <p className="animate-pulse text-sm font-semibold uppercase tracking-widest text-celebration-soft">
-                    Finding the highlight reel…
-                  </p>
-                )}
-              </motion.div>
-            </motion.section>
-          </motion.div>
+          />
         )}
-
-        {clockAnnounce && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-background/90 px-5 backdrop-blur-md"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Now on the clock: ${clockAnnounce.teamName}`}
-          >
-            <motion.div
-              initial={{ x: "-70vw", opacity: 0 }}
-              animate={{ x: "70vw", opacity: [0, 0.45, 0.45, 0] }}
-              transition={{ duration: 1.6, times: [0, 0.2, 0.8, 1], ease: "easeInOut" }}
-              className="pointer-events-none absolute inset-y-0 w-[55vw] blur-3xl"
-              style={{
-                background: `linear-gradient(90deg, transparent, ${clockAnnounce.color}, transparent)`,
-              }}
-            />
-
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              {[0, 1, 2].map((ring) => (
-                <motion.span
-                  key={ring}
-                  initial={{ scale: 0.4, opacity: 0 }}
-                  animate={{ scale: [0.4, 1.6], opacity: [0.5, 0] }}
-                  transition={{
-                    duration: 1.6,
-                    delay: 0.3 + ring * 0.45,
-                    repeat: Infinity,
-                    repeatDelay: 0.4,
-                    ease: "easeOut",
-                  }}
-                  className="absolute h-72 w-72 rounded-full border-2 sm:h-96 sm:w-96"
-                  style={{ borderColor: clockAnnounce.color }}
-                />
-              ))}
-            </div>
-
-            <motion.section
-              initial={{ opacity: 0, y: 50, scale: 0.88 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ type: "spring", stiffness: 150, damping: 16, delay: 0.15 }}
-              className="relative flex flex-col items-center text-center"
-            >
-              <div className="absolute left-0 top-0 h-12 w-12 border-l-4 border-t-4 sm:h-16 sm:w-16" style={{ borderColor: clockAnnounce.color }} />
-              <div className="absolute bottom-0 right-0 h-12 w-12 border-b-4 border-r-4 sm:h-16 sm:w-16" style={{ borderColor: clockAnnounce.color }} />
-
-              <motion.div
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 0.35, delay: 0.4 }}
-                className="mb-5 flex items-center gap-2 px-5 py-2 text-xs font-black uppercase italic tracking-[0.2em] sm:text-sm"
-                style={{ backgroundColor: clockAnnounce.color, color: "var(--color-background)" }}
-              >
-                <Timer className="h-4 w-4" /> Now on the clock
-              </motion.div>
-
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.55 }}
-                className="mb-4 text-xs font-bold uppercase tracking-widest text-muted-foreground sm:text-sm"
-              >
-                Round {clockAnnounce.round} · Pick {clockAnnounce.round}.
-                {String(clockAnnounce.pickInRound).padStart(2, "0")} · #{clockAnnounce.overall} overall
-              </motion.p>
-
-              <motion.h2
-                initial={{ opacity: 0, scale: 1.4, filter: "blur(10px)" }}
-                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                transition={{ duration: 0.6, delay: 0.65, ease: [0.2, 0.8, 0.2, 1] }}
-                className="max-w-full px-4 font-display text-6xl uppercase leading-[0.85] sm:text-8xl lg:text-[8rem]"
-                style={{
-                  color: clockAnnounce.color,
-                  textShadow: `0 0 40px ${clockAnnounce.color}`,
-                }}
-              >
-                {clockAnnounce.teamName}
-              </motion.h2>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1 }}
-                className="mt-4 text-sm font-semibold uppercase tracking-[0.25em] text-muted-foreground sm:text-base"
-              >
-                {clockAnnounce.manager || "You're on the board"}
-              </motion.p>
-
-              <motion.p
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: [0, 1, 1, 0.4, 1], y: 8 }}
-                transition={{ delay: 1.2, duration: 1.4 }}
-                className="mt-6 flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-foreground"
-              >
-                <Clock className="h-4 w-4 animate-pulse" /> The clock is ticking
-              </motion.p>
-            </motion.section>
-          </motion.div>
-        )}
+        {clockAnnounce && !bigBoardOpen && <OnTheClockOverlay announce={clockAnnounce} />}
       </AnimatePresence>
     </main>
   );
