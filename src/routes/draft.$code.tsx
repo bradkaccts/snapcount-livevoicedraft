@@ -19,6 +19,7 @@ import { BoardGrid } from "@/components/draft/BoardGrid";
 import { PickCelebration } from "@/components/draft/PickCelebration";
 import { OnTheClockOverlay } from "@/components/draft/OnTheClockOverlay";
 import { PicksTicker } from "@/components/draft/PicksTicker";
+import { PositionTally } from "@/components/draft/PositionTally";
 import { PlayerList } from "@/components/draft/PlayerList";
 import { VoicePick } from "@/components/draft/VoicePick";
 import { makePick, undoLastPick } from "@/lib/draft.functions";
@@ -182,6 +183,8 @@ function DraftBoard() {
             Room {draft.room_code} · {draft.order_type} · {draft.rounds} rounds
           </p>
         </div>
+
+        <PositionTally picks={picks} playersById={playersById} />
 
         <div className="ml-auto flex items-center gap-4">
           {complete ? (

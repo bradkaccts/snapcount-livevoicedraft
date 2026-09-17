@@ -8,6 +8,7 @@ import { BoardGrid } from "@/components/draft/BoardGrid";
 import { PickCelebration } from "@/components/draft/PickCelebration";
 import { OnTheClockOverlay } from "@/components/draft/OnTheClockOverlay";
 import { PicksTicker } from "@/components/draft/PicksTicker";
+import { PositionTally } from "@/components/draft/PositionTally";
 import { formatClock, slotForOverall } from "@/lib/draft-utils";
 import { useDraftRoom } from "@/lib/useDraftRoom";
 import { useDraftPresentation } from "@/lib/useDraftPresentation";
@@ -113,6 +114,8 @@ function BigBoard() {
             Big board · Room {draft.room_code} · {draft.rounds} rounds
           </p>
         </div>
+
+        <PositionTally picks={picks} playersById={playersById} />
 
         <div className="ml-auto flex items-center gap-5">
           {complete ? (
