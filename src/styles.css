@@ -218,8 +218,10 @@
    each piece reads as polished metal catching the light while it spins. */
 .confetti-piece {
   border-radius: 1px;
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.35);
+  /* Compositor-only glint: opacity animates on the GPU, unlike filter/box-shadow
+     which force a repaint of every piece on every frame. */
   animation: confetti-glint 0.9s ease-in-out infinite alternate;
+  backface-visibility: hidden;
 }
 
 .confetti-gold {
