@@ -718,56 +718,52 @@ function DraftBoard() {
             </div>
 
             <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-              {(["left", "right"] as const).map((side, sideIndex) =>
-                Array.from({ length: 3 }, (_, burst) => {
-                  const baseDelay = 0.35 + burst * 1.1 + sideIndex * 0.55;
-                  const originX =
-                    side === "left" ? 6 + burst * 9 : 94 - burst * 9;
-                  const originY = 92 - (burst % 2) * 10;
-                  return (
-                    <div
-                      key={`${side}-${burst}`}
-                      className="absolute"
-                      style={{ left: `${originX}%`, top: `${originY}%` }}
-                    >
-                      <motion.span
-                        initial={{ scale: 0, opacity: 0.9 }}
-                        animate={{ scale: [0, 3.2], opacity: [0.9, 0] }}
-                        transition={{ duration: 0.9, delay: baseDelay, ease: "easeOut" }}
-                        className="firework-flash absolute -left-10 -top-10 h-20 w-20 rounded-full"
-                      />
-                      {Array.from({ length: 16 }, (_, spark) => {
-                        const angle = (spark / 16) * Math.PI * 2 + burst * 0.4;
-                        const distance = 70 + ((spark * 37) % 60);
-                        return (
-                          <motion.span
-                            key={spark}
-                            initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-                            animate={{
-                              x: Math.cos(angle) * distance,
-                              y: Math.sin(angle) * distance * 0.85,
-                              opacity: [1, 1, 0],
-                              scale: [1, 0.6, 0.1],
-                            }}
-                            transition={{
-                              duration: 1.15,
-                              delay: baseDelay,
-                              ease: "easeOut",
-                            }}
-                            className={`firework-spark absolute h-1.5 w-1.5 rounded-full ${
-                              spark % 3 === 0
-                                ? "confetti-gold"
-                                : spark % 3 === 1
-                                  ? "confetti-team"
-                                  : "confetti-silver"
-                            }`}
-                          />
-                        );
-                      })}
-                    </div>
-                  );
-                }),
-              )}
+              {fireworkPlan.map((burst, burstIndex) => {
+                const sparkRand = mulberry32(hashSeed(`${spotlightKey}-${burstIndex}`));
+                return (
+                  <div
+                    key={`${burst.side}-${burstIndex}`}
+                    className="absolute"
+                    style={{ left: `${burst.originX}%`, top: `${burst.originY}%` }}
+                  >
+                    <motion.span
+                      initial={{ scale: 0, opacity: 0.9 }}
+                      animate={{ scale: [0, 3.2], opacity: [0.9, 0] }}
+                      transition={{ duration: 0.9, delay: burst.delay, ease: "easeOut" }}
+                      className="absolute -left-10 -top-10 h-20 w-20 rounded-full"
+                      style={{
+                        background: `radial-gradient(circle, #ffffff 0%, ${burst.colors[0]} 35%, transparent 70%)`,
+                      }}
+                    />
+                    {Array.from({ length: burst.sparkCount }, (_, spark) => {
+                      const { x, y } = sparkOffset(burst.type, spark, burst.sparkCount, sparkRand);
+                      const color = burst.colors[spark % burst.colors.length];
+                      return (
+                        <motion.span
+                          key={spark}
+                          initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+                          animate={{
+                            x,
+                            y,
+                            opacity: [1, 1, 0],
+                            scale: [1, 0.6, 0.1],
+                          }}
+                          transition={{
+                            duration: burst.duration,
+                            delay: burst.delay,
+                            ease: "easeOut",
+                          }}
+                          className="absolute h-1.5 w-1.5 rounded-full"
+                          style={{
+                            background: color,
+                            boxShadow: `0 0 6px 1px rgba(255,255,255,0.8), 0 0 14px 3px ${color}`,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="pointer-events-none absolute inset-0" aria-hidden="true">
