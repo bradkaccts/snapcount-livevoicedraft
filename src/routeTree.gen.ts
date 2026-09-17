@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BoardCodeRouteImport } from './routes/board.$code'
 import { Route as DraftCodeRouteImport } from './routes/draft.$code'
 import { Route as HistoryCodeRouteImport } from './routes/history.$code'
 import { Route as RecapCodeRouteImport } from './routes/recap.$code'
@@ -18,6 +19,11 @@ import { Route as ApiPublicTranscribeRouteImport } from './routes/api/public/tra
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BoardCodeRoute = BoardCodeRouteImport.update({
+  id: '/board/$code',
+  path: '/board/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DraftCodeRoute = DraftCodeRouteImport.update({
@@ -43,6 +49,7 @@ const ApiPublicTranscribeRoute = ApiPublicTranscribeRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/board/$code': typeof BoardCodeRoute
   '/draft/$code': typeof DraftCodeRoute
   '/history/$code': typeof HistoryCodeRoute
   '/recap/$code': typeof RecapCodeRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/board/$code': typeof BoardCodeRoute
   '/draft/$code': typeof DraftCodeRoute
   '/history/$code': typeof HistoryCodeRoute
   '/recap/$code': typeof RecapCodeRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/board/$code': typeof BoardCodeRoute
   '/draft/$code': typeof DraftCodeRoute
   '/history/$code': typeof HistoryCodeRoute
   '/recap/$code': typeof RecapCodeRoute
@@ -67,6 +76,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/board/$code'
     | '/draft/$code'
     | '/history/$code'
     | '/recap/$code'
@@ -74,6 +84,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/board/$code'
     | '/draft/$code'
     | '/history/$code'
     | '/recap/$code'
@@ -81,6 +92,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/board/$code'
     | '/draft/$code'
     | '/history/$code'
     | '/recap/$code'
@@ -89,6 +101,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BoardCodeRoute: typeof BoardCodeRoute
   DraftCodeRoute: typeof DraftCodeRoute
   HistoryCodeRoute: typeof HistoryCodeRoute
   RecapCodeRoute: typeof RecapCodeRoute
@@ -102,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/board/$code': {
+      id: '/board/$code'
+      path: '/board/$code'
+      fullPath: '/board/$code'
+      preLoaderRoute: typeof BoardCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/draft/$code': {
@@ -137,6 +157,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BoardCodeRoute: BoardCodeRoute,
   DraftCodeRoute: DraftCodeRoute,
   HistoryCodeRoute: HistoryCodeRoute,
   RecapCodeRoute: RecapCodeRoute,
