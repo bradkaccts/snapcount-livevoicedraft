@@ -93,9 +93,21 @@ export function useDraftRoom(code: string) {
     },
   });
 
+  // Keep the live Sleeper feed flowing into open draft rooms: this is cached
+  // server-side for 24h, so it only does real work when the feed is stale.
+  const runSync = useServerFn(syncPlayers);
+  const poolSyncQuery = useQuery({
+    queryKey: ["player-pool-sync"],
+    staleTime: 30 * 60 * 1000,
+    retry: false,
+    queryFn: () => runSync({ data: { force: false } }),
+  });
+  const lastSyncedAt = poolSyncQuery.data?.lastSyncedAt ?? null;
+
   const playersQuery = useQuery({
     queryKey: ["players"],
-    staleTime: Infinity,
+    staleTime: POOL_STALE_MS,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("players")
