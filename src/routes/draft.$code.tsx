@@ -669,7 +669,7 @@ function DraftBoard() {
                 <motion.span
                   key={index}
                   initial={{
-                    left: `${8 + ((index * 29) % 84)}%`,
+                    left: `${3 + ((index * 29) % 94)}%`,
                     top: "-8%",
                     rotate: 0,
                     opacity: 0,
@@ -680,11 +680,13 @@ function DraftBoard() {
                     opacity: [0, 1, 1, 0],
                   }}
                   transition={{
-                    duration: 2.8 + (index % 5) * 0.25,
-                    delay: 0.45 + (index % 7) * 0.08,
+                    duration: 2.6 + (index % 5) * 0.3,
+                    delay: 0.35 + (index % 11) * 0.09,
                     ease: "easeIn",
                   }}
-                  className={`confetti-piece absolute h-3 w-1.5 ${
+                  className={`confetti-piece absolute ${
+                    index % 4 === 3 ? "h-2 w-2 rounded-full" : "h-3 w-1.5"
+                  } ${
                     index % 3 === 0
                       ? "confetti-gold"
                       : index % 3 === 1
