@@ -531,9 +531,12 @@ function DraftBoard() {
             </div>
           </div>
           <div
-            className="grid w-max min-w-full gap-2"
+            className="grid w-full gap-2"
             style={{
               gridTemplateColumns: `repeat(${teams.length}, minmax(${colMin}px, 1fr))`,
+              // Only force extra width (and horizontal scrolling) when the
+              // columns can't fit at their minimum size.
+              minWidth: `${teams.length * colMin + gapPx * (teams.length - 1)}px`,
               gap: compact ? "0.25rem" : "0.375rem",
             }}
           >
