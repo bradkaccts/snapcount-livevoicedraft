@@ -111,7 +111,7 @@ function buildFireworkPlan(seedKey: string, teamColor: string): FireworkBurst[] 
         originY: 78 + rand() * 16,
         delay: t,
         duration: 0.95 + rand() * 0.5,
-        type: types[Math.floor(rand() * types.length)],
+        type: types[Math.floor(rand() * types.length)] ?? "peony",
         sparkCount: 12 + Math.floor(rand() * 12),
         colors,
       });
