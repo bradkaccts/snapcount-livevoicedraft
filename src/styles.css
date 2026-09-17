@@ -258,6 +258,23 @@
   );
 }
 
+/* Firework bursts: a glowing flash ring plus spark trails, tinted by the
+   team color so each explosion matches the picked player's club. */
+.firework-flash {
+  background: radial-gradient(
+    circle,
+    #ffffff 0%,
+    var(--celebration) 35%,
+    transparent 70%
+  );
+}
+
+.firework-spark {
+  box-shadow:
+    0 0 6px 1px rgba(255, 255, 255, 0.8),
+    0 0 14px 3px var(--celebration);
+}
+
 @keyframes confetti-glint {
   from {
     filter: brightness(0.9);
