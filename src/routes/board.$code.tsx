@@ -114,6 +114,8 @@ function BigBoard() {
           </p>
         </div>
 
+        <PositionTally picks={picks} playersById={playersById} />
+
         <div className="ml-auto flex items-center gap-5">
           {complete ? (
             <span className="inline-flex items-center gap-2 rounded-lg bg-primary/15 px-5 py-2 font-display text-3xl text-primary">
