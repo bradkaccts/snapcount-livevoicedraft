@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { syncPlayers } from "@/lib/players.functions";
+
+const POOL_STALE_MS = 5 * 60 * 1000;
 
 export type Player = {
   id: string;
