@@ -443,7 +443,7 @@ function DraftBoard() {
                     return (
                       <li
                         key={round}
-                        className={`rounded-md px-2 ${compact ? "py-1 text-xs" : "py-1.5 text-sm"} ${
+                        className={`rounded-md ${narrow ? "px-1" : "px-2"} ${compact ? "py-1 text-xs" : "py-1.5 text-sm"} ${
                           player
                             ? "bg-surface"
                             : isCurrent
@@ -459,7 +459,7 @@ function DraftBoard() {
                               </span>
                               <span className="truncate font-semibold">{player.name}</span>
                             </span>
-                            {!compact && (
+                            {!compact && !narrow && (
                               <span className="text-[11px] text-muted-foreground">
                                 {player.nfl_team} · {round}.
                                 {String(entry?.pick_in_round ?? 0).padStart(2, "0")}
