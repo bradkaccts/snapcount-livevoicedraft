@@ -92,8 +92,9 @@ function DraftBoard() {
   }, [isLoading, notFound]);
 
   const teamCount = teams.length || 1;
-  // Absolute floor per column; below this the board scrolls horizontally.
-  const colFloor = compact ? 48 : 60;
+  // Absolute floor per column; below this the board scrolls horizontally
+  // rather than squeezing a column until it is unreadable or clipped.
+  const colFloor = compact ? 76 : 92;
   // Space eaten by padding (p-4 => 32px) and the gaps between columns.
   const gapPx = compact ? 4 : 6;
   const usable = boardWidth > 0 ? boardWidth - 32 - gapPx * (teamCount - 1) : 0;
@@ -105,6 +106,8 @@ function DraftBoard() {
     (compact ? 16 : 0);
   const colMin = Math.max(colFloor, Math.min(legacyMin, fluidCol || legacyMin));
   const narrow = fluidCol > 0 && fluidCol < 96;
+  const overflowing = usable > 0 && fluidCol < colFloor;
+
 
   const [paused, setPaused] = useState(false);
   const [remaining, setRemaining] = useState(0);
