@@ -31,6 +31,7 @@ import {
   slotForOverall,
 } from "@/lib/draft-utils";
 import { useDraftRoom, type Player } from "@/lib/useDraftRoom";
+import { useMotionBudget, type MotionBudget } from "@/lib/useMotionBudget";
 
 export const Route = createFileRoute("/draft/$code")({
   head: () => ({
@@ -83,12 +84,19 @@ type FireworkBurst = {
   colors: string[];
 };
 
-function buildFireworkPlan(seedKey: string, teamColor: string): FireworkBurst[] {
+function buildFireworkPlan(
+  seedKey: string,
+  teamColor: string,
+  budget: MotionBudget = "full",
+): FireworkBurst[] {
+  if (budget === "none") return [];
+  const lite = budget === "lite";
   const rand = mulberry32(hashSeed(seedKey));
   const types: FireworkBurst["type"][] = ["peony", "ring", "willow", "spokes"];
   const bursts: FireworkBurst[] = [];
   for (const side of ["left", "right"] as const) {
-    const count = 2 + Math.floor(rand() * 3); // 2–4 bursts per side
+    // 2–4 bursts per side on capable devices, 1–2 on lighter hardware.
+    const count = lite ? 1 + Math.floor(rand() * 2) : 2 + Math.floor(rand() * 3);
     let t = 0.25 + rand() * 0.5;
     for (let b = 0; b < count; b++) {
       // Color story: team-only, gold, silver, or a mixed/random palette.
@@ -112,7 +120,7 @@ function buildFireworkPlan(seedKey: string, teamColor: string): FireworkBurst[] 
         delay: t,
         duration: 0.95 + rand() * 0.5,
         type: types[Math.floor(rand() * types.length)] ?? "peony",
-        sparkCount: 12 + Math.floor(rand() * 12),
+        sparkCount: lite ? 8 + Math.floor(rand() * 5) : 12 + Math.floor(rand() * 12),
         colors,
       });
       t += 0.7 + rand() * 0.9;
@@ -279,13 +287,16 @@ function DraftBoard() {
   const spotlightKey = spotlight ? `${spotlight.overall}-${spotlight.player.id}` : null;
 
   // Seeded per-pick firework plan so every celebration looks a little different.
+  const motionBudget = useMotionBudget();
   const fireworkPlan = useMemo(
     () =>
       spotlightKey
-        ? buildFireworkPlan(spotlightKey, spotlightPalette.primary)
+        ? buildFireworkPlan(spotlightKey, spotlightPalette.primary, motionBudget)
         : [],
-    [spotlightKey, spotlightPalette.primary],
+    [spotlightKey, spotlightPalette.primary, motionBudget],
   );
+  // Confetti volume scales with the device budget so mid-range hardware keeps 60fps.
+  const confettiCount = motionBudget === "full" ? 72 : motionBudget === "lite" ? 32 : 0;
   useEffect(() => {
     if (!spotlightKey) return;
     const timer = setTimeout(() => setSpotlight(null), 7000);
@@ -753,10 +764,9 @@ function DraftBoard() {
                             delay: burst.delay,
                             ease: "easeOut",
                           }}
-                          className="absolute h-1.5 w-1.5 rounded-full"
+                          className="firework-spark absolute h-3 w-3 rounded-full"
                           style={{
-                            background: color,
-                            boxShadow: `0 0 6px 1px rgba(255,255,255,0.8), 0 0 14px 3px ${color}`,
+                            background: `radial-gradient(circle, #ffffff 0%, ${color} 38%, transparent 72%)`,
                           }}
                         />
                       );
@@ -767,17 +777,18 @@ function DraftBoard() {
             </div>
 
             <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-              {Array.from({ length: 72 }, (_, index) => (
+              {Array.from({ length: confettiCount }, (_, index) => (
                 <motion.span
                   key={index}
                   initial={{
                     left: `${3 + ((index * 29) % 94)}%`,
-                    top: "-8%",
+                    top: 0,
+                    y: "-10vh",
                     rotate: 0,
                     opacity: 0,
                   }}
                   animate={{
-                    top: "108%",
+                    y: "110vh",
                     rotate: index % 2 === 0 ? 540 : -540,
                     opacity: [0, 1, 1, 0],
                   }}
