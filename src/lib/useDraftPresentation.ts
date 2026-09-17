@@ -118,7 +118,9 @@ export function useDraftPresentation({
       skipNextAnnounce.current = false;
       return;
     }
+    console.log("[dbg-announce2]", {skip: skipNextAnnounce.current, onTheClock: onTheClock?.name, current});
     if (!onTheClock || !current) return;
+    console.log("[dbg-announce3] firing");
     setClockAnnounce({
       teamId: onTheClock.id,
       teamName: onTheClock.name,
