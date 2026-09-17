@@ -73,7 +73,6 @@ export function useDraftPresentation({
     const player = playersById.get(entry.player_id);
     if (!player) return;
     const team = teams.find((t) => t.id === entry.team_id);
-    console.log('[dbg-spot] set', maxOverall);
     setSpotlight({
       player,
       teamName: team?.name ?? "",
@@ -112,15 +111,12 @@ export function useDraftPresentation({
   useEffect(() => {
     const wasOpen = celebrationWasOpen.current;
     celebrationWasOpen.current = Boolean(spotlight);
-    console.log('[dbg-announce]', {wasOpen, spot: Boolean(spotlight), complete, draft: Boolean(draft)});
     if (!wasOpen || spotlight || complete || !draft) return;
     if (skipNextAnnounce.current) {
       skipNextAnnounce.current = false;
       return;
     }
-    console.log("[dbg-announce2]", {skip: skipNextAnnounce.current, onTheClock: onTheClock?.name, current});
     if (!onTheClock || !current) return;
-    console.log("[dbg-announce3] firing");
     setClockAnnounce({
       teamId: onTheClock.id,
       teamName: onTheClock.name,
