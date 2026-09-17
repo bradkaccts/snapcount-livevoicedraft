@@ -384,7 +384,7 @@ function DraftBoard() {
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <section className="board-scroll relative min-h-0 flex-1 overflow-auto scrollbar-thin p-4">
+        <section ref={boardRef} className="board-scroll relative min-h-0 flex-1 overflow-auto scrollbar-thin p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             {nextUp && !complete ? (
               <p className="min-w-0 truncate text-sm text-muted-foreground">
