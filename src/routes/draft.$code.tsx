@@ -301,6 +301,7 @@ function DraftBoard() {
       <AnimatePresence>
         {spotlight && !bigBoardOpen && (
           <PickCelebration
+            key="pick-celebration"
             spotlight={spotlight}
             onClose={() => setSpotlight(null)}
             onMediaError={(field) =>
@@ -310,7 +311,9 @@ function DraftBoard() {
             }
           />
         )}
-        {clockAnnounce && !bigBoardOpen && <OnTheClockOverlay announce={clockAnnounce} />}
+        {clockAnnounce && !bigBoardOpen && (
+          <OnTheClockOverlay key={`on-the-clock-${clockAnnounce.overall}`} announce={clockAnnounce} />
+        )}
       </AnimatePresence>
     </main>
   );
