@@ -51,6 +51,103 @@ export const Route = createFileRoute("/draft/$code")({
   component: DraftBoard,
 });
 
+// Seeded RNG so a given pick always replays the same firework show.
+function hashSeed(key: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function mulberry32(seed: number): () => number {
+  let a = seed;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+type FireworkBurst = {
+  side: "left" | "right";
+  originX: number;
+  originY: number;
+  delay: number;
+  duration: number;
+  type: "peony" | "ring" | "willow" | "spokes";
+  sparkCount: number;
+  colors: string[];
+};
+
+function buildFireworkPlan(seedKey: string, teamColor: string): FireworkBurst[] {
+  const rand = mulberry32(hashSeed(seedKey));
+  const types: FireworkBurst["type"][] = ["peony", "ring", "willow", "spokes"];
+  const bursts: FireworkBurst[] = [];
+  for (const side of ["left", "right"] as const) {
+    const count = 2 + Math.floor(rand() * 3); // 2–4 bursts per side
+    let t = 0.25 + rand() * 0.5;
+    for (let b = 0; b < count; b++) {
+      // Color story: team-only, gold, silver, or a mixed/random palette.
+      const roll = rand();
+      const hue = Math.floor(rand() * 360);
+      const colors =
+        roll < 0.35
+          ? [teamColor, "#ffffff"]
+          : roll < 0.55
+            ? ["#d4af37", "#fff3c4"]
+            : roll < 0.75
+              ? ["#e8ecf1", teamColor, "#d4af37"]
+              : [`hsl(${hue} 95% 62%)`, `hsl(${(hue + 60) % 360} 95% 68%)`, "#ffffff"];
+      bursts.push({
+        side,
+        originX:
+          side === "left"
+            ? 5 + rand() * 20
+            : 95 - rand() * 20,
+        originY: 78 + rand() * 16,
+        delay: t,
+        duration: 0.95 + rand() * 0.5,
+        type: types[Math.floor(rand() * types.length)] ?? "peony",
+        sparkCount: 12 + Math.floor(rand() * 12),
+        colors,
+      });
+      t += 0.7 + rand() * 0.9;
+    }
+  }
+  return bursts;
+}
+
+// Spark offsets per burst type: peony = varied-radius sphere, ring = even
+// circle, willow = drooping trails, spokes = a few long straight rays.
+function sparkOffset(
+  type: FireworkBurst["type"],
+  spark: number,
+  count: number,
+  rand: () => number,
+): { x: number; y: number } {
+  const angle = (spark / count) * Math.PI * 2 + rand() * 0.3;
+  if (type === "ring") {
+    const d = 105;
+    return { x: Math.cos(angle) * d, y: Math.sin(angle) * d };
+  }
+  if (type === "willow") {
+    const d = 55 + rand() * 70;
+    return { x: Math.cos(angle) * d * 0.9, y: Math.abs(Math.sin(angle)) * d * 0.45 + d * 0.55 };
+  }
+  if (type === "spokes") {
+    const spokes = 6;
+    const spokeAngle = ((spark % spokes) / spokes) * Math.PI * 2;
+    const d = 80 + rand() * 60;
+    return { x: Math.cos(spokeAngle) * d, y: Math.sin(spokeAngle) * d * 0.9 };
+  }
+  const d = 65 + rand() * 65;
+  return { x: Math.cos(angle) * d, y: Math.sin(angle) * d * 0.85 };
+}
+
 function DraftBoard() {
   const { code } = Route.useParams();
   const { draft, teams, picks, players, isLoading, notFound, refresh } =
@@ -180,6 +277,15 @@ function DraftBoard() {
 
   // Let the celebration play out (~4s), hold for 3s, then return to the board.
   const spotlightKey = spotlight ? `${spotlight.overall}-${spotlight.player.id}` : null;
+
+  // Seeded per-pick firework plan so every celebration looks a little different.
+  const fireworkPlan = useMemo(
+    () =>
+      spotlightKey
+        ? buildFireworkPlan(spotlightKey, spotlightPalette.primary)
+        : [],
+    [spotlightKey, spotlightPalette.primary],
+  );
   useEffect(() => {
     if (!spotlightKey) return;
     const timer = setTimeout(() => setSpotlight(null), 7000);
@@ -612,56 +718,52 @@ function DraftBoard() {
             </div>
 
             <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-              {(["left", "right"] as const).map((side, sideIndex) =>
-                Array.from({ length: 3 }, (_, burst) => {
-                  const baseDelay = 0.35 + burst * 1.1 + sideIndex * 0.55;
-                  const originX =
-                    side === "left" ? 6 + burst * 9 : 94 - burst * 9;
-                  const originY = 92 - (burst % 2) * 10;
-                  return (
-                    <div
-                      key={`${side}-${burst}`}
-                      className="absolute"
-                      style={{ left: `${originX}%`, top: `${originY}%` }}
-                    >
-                      <motion.span
-                        initial={{ scale: 0, opacity: 0.9 }}
-                        animate={{ scale: [0, 3.2], opacity: [0.9, 0] }}
-                        transition={{ duration: 0.9, delay: baseDelay, ease: "easeOut" }}
-                        className="firework-flash absolute -left-10 -top-10 h-20 w-20 rounded-full"
-                      />
-                      {Array.from({ length: 16 }, (_, spark) => {
-                        const angle = (spark / 16) * Math.PI * 2 + burst * 0.4;
-                        const distance = 70 + ((spark * 37) % 60);
-                        return (
-                          <motion.span
-                            key={spark}
-                            initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
-                            animate={{
-                              x: Math.cos(angle) * distance,
-                              y: Math.sin(angle) * distance * 0.85,
-                              opacity: [1, 1, 0],
-                              scale: [1, 0.6, 0.1],
-                            }}
-                            transition={{
-                              duration: 1.15,
-                              delay: baseDelay,
-                              ease: "easeOut",
-                            }}
-                            className={`firework-spark absolute h-1.5 w-1.5 rounded-full ${
-                              spark % 3 === 0
-                                ? "confetti-gold"
-                                : spark % 3 === 1
-                                  ? "confetti-team"
-                                  : "confetti-silver"
-                            }`}
-                          />
-                        );
-                      })}
-                    </div>
-                  );
-                }),
-              )}
+              {fireworkPlan.map((burst, burstIndex) => {
+                const sparkRand = mulberry32(hashSeed(`${spotlightKey}-${burstIndex}`));
+                return (
+                  <div
+                    key={`${burst.side}-${burstIndex}`}
+                    className="absolute"
+                    style={{ left: `${burst.originX}%`, top: `${burst.originY}%` }}
+                  >
+                    <motion.span
+                      initial={{ scale: 0, opacity: 0.9 }}
+                      animate={{ scale: [0, 3.2], opacity: [0.9, 0] }}
+                      transition={{ duration: 0.9, delay: burst.delay, ease: "easeOut" }}
+                      className="absolute -left-10 -top-10 h-20 w-20 rounded-full"
+                      style={{
+                        background: `radial-gradient(circle, #ffffff 0%, ${burst.colors[0]} 35%, transparent 70%)`,
+                      }}
+                    />
+                    {Array.from({ length: burst.sparkCount }, (_, spark) => {
+                      const { x, y } = sparkOffset(burst.type, spark, burst.sparkCount, sparkRand);
+                      const color = burst.colors[spark % burst.colors.length];
+                      return (
+                        <motion.span
+                          key={spark}
+                          initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+                          animate={{
+                            x,
+                            y,
+                            opacity: [1, 1, 0],
+                            scale: [1, 0.6, 0.1],
+                          }}
+                          transition={{
+                            duration: burst.duration,
+                            delay: burst.delay,
+                            ease: "easeOut",
+                          }}
+                          className="absolute h-1.5 w-1.5 rounded-full"
+                          style={{
+                            background: color,
+                            boxShadow: `0 0 6px 1px rgba(255,255,255,0.8), 0 0 14px 3px ${color}`,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
 
             <div className="pointer-events-none absolute inset-0" aria-hidden="true">
