@@ -127,7 +127,7 @@ export function useDraftRoom(code: string) {
   const pickedPlayersQuery = useQuery({
     queryKey: ["picked-players", pickedIds],
     enabled: pickedIds.length > 0,
-    staleTime: Infinity,
+    staleTime: POOL_STALE_MS,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("players")
