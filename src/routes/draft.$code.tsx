@@ -383,7 +383,7 @@ function DraftBoard() {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
         <section ref={boardRef} className="board-scroll relative min-h-0 flex-1 overflow-auto scrollbar-thin p-4">
           <div className="mb-3 flex items-center justify-between gap-3">
             {nextUp && !complete ? (
@@ -480,7 +480,7 @@ function DraftBoard() {
           </div>
         </section>
 
-        <aside className="flex min-h-0 w-full shrink-0 flex-col border-t border-border bg-surface lg:w-[400px] lg:border-l lg:border-t-0">
+        <aside className="flex min-h-0 w-full shrink-0 flex-col border-t border-border bg-surface xl:w-[400px] xl:border-l xl:border-t-0">
           <div className="min-h-0 flex-1">
             <PlayerList
               players={available}
