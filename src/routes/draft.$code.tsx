@@ -180,6 +180,15 @@ function DraftBoard() {
 
   // Let the celebration play out (~4s), hold for 3s, then return to the board.
   const spotlightKey = spotlight ? `${spotlight.overall}-${spotlight.player.id}` : null;
+
+  // Seeded per-pick firework plan so every celebration looks a little different.
+  const fireworkPlan = useMemo(
+    () =>
+      spotlightKey
+        ? buildFireworkPlan(spotlightKey, spotlightPalette.primary)
+        : [],
+    [spotlightKey, spotlightPalette.primary],
+  );
   useEffect(() => {
     if (!spotlightKey) return;
     const timer = setTimeout(() => setSpotlight(null), 7000);
