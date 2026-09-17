@@ -203,11 +203,20 @@ function DraftBoard() {
               </div>
               <div
                 className={`flex items-center gap-2 rounded-lg px-4 py-2 font-display text-4xl leading-none tabular-nums ${
-                  remaining <= 10 ? "bg-destructive/20 text-destructive" : "bg-surface-2 text-clock"
+                  remaining <= 0
+                    ? "clock-expired bg-destructive/25 text-destructive"
+                    : remaining <= 10
+                      ? "bg-destructive/20 text-destructive"
+                      : "bg-surface-2 text-clock"
                 }`}
+                aria-live="polite"
               >
                 <Clock className="h-6 w-6" />
-                {formatClock(remaining)}
+                {remaining <= 0 ? (
+                  <span className="text-2xl uppercase tracking-wide">Time expired</span>
+                ) : (
+                  formatClock(remaining)
+                )}
               </div>
               <Button
                 variant="secondary"
