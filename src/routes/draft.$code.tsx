@@ -83,12 +83,19 @@ type FireworkBurst = {
   colors: string[];
 };
 
-function buildFireworkPlan(seedKey: string, teamColor: string): FireworkBurst[] {
+function buildFireworkPlan(
+  seedKey: string,
+  teamColor: string,
+  budget: MotionBudget = "full",
+): FireworkBurst[] {
+  if (budget === "none") return [];
+  const lite = budget === "lite";
   const rand = mulberry32(hashSeed(seedKey));
   const types: FireworkBurst["type"][] = ["peony", "ring", "willow", "spokes"];
   const bursts: FireworkBurst[] = [];
   for (const side of ["left", "right"] as const) {
-    const count = 2 + Math.floor(rand() * 3); // 2–4 bursts per side
+    // 2–4 bursts per side on capable devices, 1–2 on lighter hardware.
+    const count = lite ? 1 + Math.floor(rand() * 2) : 2 + Math.floor(rand() * 3);
     let t = 0.25 + rand() * 0.5;
     for (let b = 0; b < count; b++) {
       // Color story: team-only, gold, silver, or a mixed/random palette.
