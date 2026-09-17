@@ -26,13 +26,16 @@ export function PositionTally({ picks, playersById }: Props) {
 
   return (
     <div
-      className="flex items-center gap-1.5"
+      className="pos-tally min-w-0 flex-1 items-center"
       role="status"
       aria-label={`Players drafted by position: ${POSITIONS.map(
         (pos) => `${counts[pos] ?? 0} ${pos}`,
       ).join(", ")}`}
     >
-      <span className="mr-1 hidden font-display text-[10px] uppercase tracking-widest text-muted-foreground lg:inline">
+      <span
+        className="tally-label mr-1 hidden shrink-0 font-display uppercase tracking-widest text-muted-foreground md:inline"
+        style={{ fontSize: "clamp(0.55rem, 2.4cqi, 0.75rem)" }}
+      >
         Drafted
       </span>
       {POSITIONS.map((pos) => {
@@ -41,7 +44,7 @@ export function PositionTally({ picks, playersById }: Props) {
           <span
             key={pos}
             title={`${count} ${pos} drafted`}
-            className={`pos-chip tabular-nums transition-opacity ${
+            className={`pos-chip shrink-0 tabular-nums transition-opacity ${
               count > 0 ? POSITION_CLASS[pos] : "bg-surface-2 text-muted-foreground opacity-60"
             }`}
           >
@@ -50,7 +53,10 @@ export function PositionTally({ picks, playersById }: Props) {
           </span>
         );
       })}
-      <span className="ml-1 font-display text-xs uppercase tracking-widest text-muted-foreground tabular-nums">
+      <span
+        className="tally-total ml-1 shrink-0 font-display uppercase tracking-widest text-muted-foreground tabular-nums"
+        style={{ fontSize: "clamp(0.6rem, 2.6cqi, 0.85rem)" }}
+      >
         {total} total
       </span>
     </div>
