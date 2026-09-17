@@ -272,17 +272,17 @@
 }
 
 .firework-spark {
-  box-shadow:
-    0 0 6px 1px rgba(255, 255, 255, 0.8),
-    0 0 14px 3px var(--celebration);
+  /* Glow baked into the background gradient instead of a blurred box-shadow,
+     so scaling the spark never re-rasterizes a shadow. */
+  backface-visibility: hidden;
 }
 
 @keyframes confetti-glint {
   from {
-    filter: brightness(0.9);
+    opacity: 0.72;
   }
   to {
-    filter: brightness(1.45);
+    opacity: 1;
   }
 }
 
