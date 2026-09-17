@@ -12,7 +12,11 @@ import {
   Trash2,
   Loader2,
   RefreshCw,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
+
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -100,6 +104,20 @@ function SetupPage() {
   const [shuffling, setShuffling] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [joinCode, setJoinCode] = useState("");
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  const moveTeam = (from: number, to: number) => {
+    if (to < 0 || to >= teams.length || from === to) return;
+    setTeams((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      if (!moved) return prev;
+      next.splice(to, 0, moved);
+      return next;
+    });
+    setDragIndex((cur) => (cur === null ? cur : to));
+  };
+
 
   const queryClient = useQueryClient();
   const sync = useServerFn(syncPlayers);
@@ -370,8 +388,10 @@ function SetupPage() {
               </Button>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Pick 1.01 goes to the team at the top.
+              Pick 1.01 goes to the team at the top. Drag a team by the handle, or use the arrows,
+              to change the order.
             </p>
+
 
             <ul className="mt-5 space-y-2">
               {teams.map((team, index) => (
@@ -379,8 +399,25 @@ function SetupPage() {
                   key={`${team.color}-${index}`}
                   layout
                   transition={{ type: "spring", stiffness: 500, damping: 34 }}
-                  className="flex items-center gap-3 rounded-lg bg-surface-2 p-2.5"
+                  draggable
+                  onDragStart={(e) => {
+                    setDragIndex(index);
+                    (e as unknown as React.DragEvent).dataTransfer?.setData("text/plain", String(index));
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (dragIndex !== null && dragIndex !== index) moveTeam(dragIndex, index);
+                  }}
+                  onDragEnd={() => setDragIndex(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragIndex(null);
+                  }}
+                  className={`flex items-center gap-3 rounded-lg bg-surface-2 p-2.5 ${
+                    dragIndex === index ? "opacity-60 ring-1 ring-primary" : ""
+                  }`}
                 >
+                  <GripVertical className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing" />
                   <span className="w-7 text-center font-display text-xl text-muted-foreground">
                     {index + 1}
                   </span>
@@ -401,6 +438,28 @@ function SetupPage() {
                     className="h-9 w-32 border-0 bg-transparent px-1 text-muted-foreground focus-visible:bg-background"
                     maxLength={40}
                   />
+                  <div className="flex shrink-0 flex-col">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-7 text-muted-foreground"
+                      disabled={index === 0}
+                      onClick={() => moveTeam(index, index - 1)}
+                      aria-label={`Move ${team.name} up`}
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-7 text-muted-foreground"
+                      disabled={index === teams.length - 1}
+                      onClick={() => moveTeam(index, index + 1)}
+                      aria-label={`Move ${team.name} down`}
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                   {teams.length > 4 && (
                     <Button
                       variant="ghost"
@@ -415,6 +474,7 @@ function SetupPage() {
                 </motion.li>
               ))}
             </ul>
+
 
             {teams.length < 16 && (
               <Button
